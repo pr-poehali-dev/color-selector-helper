@@ -4,8 +4,7 @@ import Icon from "@/components/ui/icon";
 type Section = "generator" | "analyzer" | "gallery" | "export" | "tests" | "theory";
 
 function hslToHex(h: number, s: number, l: number): string {
-  s /= 100;
-  l /= 100;
+  s /= 100; l /= 100;
   const a = s * Math.min(l, 1 - l);
   const f = (n: number) => {
     const k = (n + h / 30) % 12;
@@ -32,10 +31,8 @@ function getLuminance(hex: string) {
 }
 
 function getContrastRatio(hex1: string, hex2: string) {
-  const l1 = getLuminance(hex1);
-  const l2 = getLuminance(hex2);
-  const bright = Math.max(l1, l2);
-  const dark = Math.min(l1, l2);
+  const l1 = getLuminance(hex1), l2 = getLuminance(hex2);
+  const bright = Math.max(l1, l2), dark = Math.min(l1, l2);
   return (bright + 0.05) / (dark + 0.05);
 }
 
@@ -56,8 +53,7 @@ function hexToHsl(hex: string): [number, number, number] {
 }
 
 function mixColors(hex1: string, hex2: string, ratio: number): string {
-  const a = hexToRgb(hex1);
-  const b = hexToRgb(hex2);
+  const a = hexToRgb(hex1), b = hexToRgb(hex2);
   const r = Math.round(a.r * (1 - ratio) + b.r * ratio);
   const g = Math.round(a.g * (1 - ratio) + b.g * ratio);
   const bv = Math.round(a.b * (1 - ratio) + b.b * ratio);
@@ -69,40 +65,87 @@ function generateMixSteps(hex1: string, hex2: string, steps: number): string[] {
 }
 
 function generatePalette(h: number, s: number, l: number, mode: string): string[] {
-  if (mode === "analogous") {
-    return [
-      hslToHex((h - 30 + 360) % 360, s, l),
-      hslToHex((h - 15 + 360) % 360, s, l),
-      hslToHex(h, s, l),
-      hslToHex((h + 15) % 360, s, l),
-      hslToHex((h + 30) % 360, s, l),
-    ];
-  }
-  if (mode === "complementary") {
-    return [
-      hslToHex(h, s, Math.max(20, l - 20)),
-      hslToHex(h, s, l),
-      hslToHex(h, Math.max(10, s - 20), Math.min(90, l + 20)),
-      hslToHex((h + 180) % 360, s, l),
-      hslToHex((h + 180) % 360, s, Math.max(20, l - 20)),
-    ];
-  }
-  if (mode === "triadic") {
-    return [
-      hslToHex(h, s, l),
-      hslToHex((h + 120) % 360, s, l),
-      hslToHex((h + 240) % 360, s, l),
-      hslToHex(h, Math.max(10, s - 20), Math.min(90, l + 20)),
-      hslToHex((h + 120) % 360, Math.max(10, s - 20), Math.min(90, l + 20)),
-    ];
-  }
-  return [
-    hslToHex(h, s, Math.max(10, l - 30)),
-    hslToHex(h, s, Math.max(10, l - 15)),
-    hslToHex(h, s, l),
-    hslToHex(h, s, Math.min(95, l + 15)),
-    hslToHex(h, s, Math.min(95, l + 30)),
+  if (mode === "analogous") return [
+    hslToHex((h - 30 + 360) % 360, s, l), hslToHex((h - 15 + 360) % 360, s, l),
+    hslToHex(h, s, l), hslToHex((h + 15) % 360, s, l), hslToHex((h + 30) % 360, s, l),
   ];
+  if (mode === "complementary") return [
+    hslToHex(h, s, Math.max(20, l - 20)), hslToHex(h, s, l),
+    hslToHex(h, Math.max(10, s - 20), Math.min(90, l + 20)),
+    hslToHex((h + 180) % 360, s, l), hslToHex((h + 180) % 360, s, Math.max(20, l - 20)),
+  ];
+  if (mode === "triadic") return [
+    hslToHex(h, s, l), hslToHex((h + 120) % 360, s, l), hslToHex((h + 240) % 360, s, l),
+    hslToHex(h, Math.max(10, s - 20), Math.min(90, l + 20)),
+    hslToHex((h + 120) % 360, Math.max(10, s - 20), Math.min(90, l + 20)),
+  ];
+  return [
+    hslToHex(h, s, Math.max(10, l - 30)), hslToHex(h, s, Math.max(10, l - 15)),
+    hslToHex(h, s, l), hslToHex(h, s, Math.min(95, l + 15)), hslToHex(h, s, Math.min(95, l + 30)),
+  ];
+}
+
+// K-means color quantization from image
+function extractColorsFromImage(img: HTMLImageElement, count = 8): string[] {
+  const canvas = document.createElement("canvas");
+  const MAX = 120;
+  const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+  canvas.width = Math.round(img.width * scale);
+  canvas.height = Math.round(img.height * scale);
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+
+  // Sample pixels
+  const pixels: [number, number, number][] = [];
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+    if (a < 128) continue;
+    // Skip near-black and near-white
+    const bright = (r + g + b) / 3;
+    if (bright < 20 || bright > 235) continue;
+    pixels.push([r, g, b]);
+  }
+
+  if (pixels.length === 0) return [];
+
+  // Simple k-means
+  let centers: [number, number, number][] = [];
+  const step = Math.floor(pixels.length / count);
+  for (let i = 0; i < count; i++) centers.push([...pixels[i * step]] as [number, number, number]);
+
+  for (let iter = 0; iter < 12; iter++) {
+    const sums: [number, number, number, number][] = Array.from({ length: count }, () => [0, 0, 0, 0]);
+    for (const [r, g, b] of pixels) {
+      let best = 0, bestDist = Infinity;
+      for (let k = 0; k < count; k++) {
+        const dr = r - centers[k][0], dg = g - centers[k][1], db = b - centers[k][2];
+        const d = dr * dr + dg * dg + db * db;
+        if (d < bestDist) { bestDist = d; best = k; }
+      }
+      sums[best][0] += r; sums[best][1] += g; sums[best][2] += b; sums[best][3]++;
+    }
+    centers = sums.map(([r, g, b, n], i) =>
+      n > 0 ? [Math.round(r / n), Math.round(g / n), Math.round(b / n)] : centers[i]
+    );
+  }
+
+  // Sort by cluster size (most common first)
+  const clusterSizes = new Array(count).fill(0);
+  for (const [r, g, b] of pixels) {
+    let best = 0, bestDist = Infinity;
+    for (let k = 0; k < count; k++) {
+      const dr = r - centers[k][0], dg = g - centers[k][1], db = b - centers[k][2];
+      const d = dr * dr + dg * dg + db * db;
+      if (d < bestDist) { bestDist = d; best = k; }
+    }
+    clusterSizes[best]++;
+  }
+
+  return centers
+    .map((c, i) => ({ hex: `#${c[0].toString(16).padStart(2, "0")}${c[1].toString(16).padStart(2, "0")}${c[2].toString(16).padStart(2, "0")}`, size: clusterSizes[i] }))
+    .sort((a, b) => b.size - a.size)
+    .map(x => x.hex);
 }
 
 const GALLERY_PALETTES = [
@@ -125,191 +168,268 @@ const THEORY_TOPICS = [
   { icon: "Wand2", title: "60-30-10 Правило", desc: "Доминирующий цвет занимает 60%, вторичный — 30%, акцентный — 10%. Это создаёт визуальный баланс и гармонию в дизайне." },
 ];
 
+// ─── ColorWheel ────────────────────────────────────────────────────────────────
 function ColorWheel({ hue, saturation, lightness, onSelect }: {
   hue: number; saturation: number; lightness: number;
-  onSelect: (h: number, s: number, l: number) => void;
+  onSelect: (h: number) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const size = 240;
-  const cx = size / 2;
-  const cy = size / 2;
-  const r = size / 2 - 8;
+  const SIZE = 240, CX = 120, CY = 120, R = 112;
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
-    ctx.clearRect(0, 0, size, size);
+    ctx.clearRect(0, 0, SIZE, SIZE);
 
-    // Draw wheel ring
     for (let deg = 0; deg < 360; deg++) {
-      const startAngle = (deg - 1) * Math.PI / 180;
-      const endAngle = (deg + 1) * Math.PI / 180;
-      const gradient = ctx.createRadialGradient(cx, cy, r * 0.42, cx, cy, r);
-      gradient.addColorStop(0, `hsla(${deg}, 10%, ${lightness}%, 0.15)`);
-      gradient.addColorStop(1, `hsl(${deg}, ${saturation}%, ${lightness}%)`);
+      const grad = ctx.createRadialGradient(CX, CY, R * 0.42, CX, CY, R);
+      grad.addColorStop(0, `hsla(${deg}, 10%, ${lightness}%, 0.15)`);
+      grad.addColorStop(1, `hsl(${deg}, ${saturation}%, ${lightness}%)`);
       ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, r, startAngle, endAngle);
+      ctx.moveTo(CX, CY);
+      ctx.arc(CX, CY, R, (deg - 1) * Math.PI / 180, (deg + 1) * Math.PI / 180);
       ctx.closePath();
-      ctx.fillStyle = gradient;
+      ctx.fillStyle = grad;
       ctx.fill();
     }
 
-    // Center inner circle with base color
-    const innerR = r * 0.4;
-    const centerGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, innerR);
-    centerGrad.addColorStop(0, `hsl(${hue}, ${saturation}%, ${Math.min(lightness + 10, 95)}%)`);
-    centerGrad.addColorStop(1, `hsl(${hue}, ${saturation}%, ${lightness}%)`);
+    const innerR = R * 0.4;
+    const cg = ctx.createRadialGradient(CX, CY, 0, CX, CY, innerR);
+    cg.addColorStop(0, `hsl(${hue}, ${saturation}%, ${Math.min(lightness + 10, 95)}%)`);
+    cg.addColorStop(1, `hsl(${hue}, ${saturation}%, ${lightness}%)`);
     ctx.beginPath();
-    ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
-    ctx.fillStyle = centerGrad;
+    ctx.arc(CX, CY, innerR, 0, Math.PI * 2);
+    ctx.fillStyle = cg;
     ctx.fill();
 
-    // Center hex label
-    ctx.fillStyle = lightness > 55 ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.9)";
-    ctx.font = "bold 11px monospace";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    // Cursor dot on wheel
     const angle = (hue - 90) * Math.PI / 180;
-    const dotR = r * 0.72;
-    const dx = cx + dotR * Math.cos(angle);
-    const dy = cy + dotR * Math.sin(angle);
+    const dotR = R * 0.72;
+    const dx = CX + dotR * Math.cos(angle), dy = CY + dotR * Math.sin(angle);
     ctx.beginPath();
     ctx.arc(dx, dy, 9, 0, Math.PI * 2);
     ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
     ctx.fill();
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
+    ctx.strokeStyle = "white"; ctx.lineWidth = 2.5; ctx.stroke();
   }, [hue, saturation, lightness]);
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left - cx;
-    const y = e.clientY - rect.top - cy;
+    const rect = canvasRef.current!.getBoundingClientRect();
+    const x = e.clientX - rect.left - CX, y = e.clientY - rect.top - CY;
     const dist = Math.sqrt(x * x + y * y);
-    if (dist < r * 0.38 || dist > r + 8) return;
+    if (dist < R * 0.38 || dist > R + 8) return;
     let angle = Math.atan2(y, x) * 180 / Math.PI + 90;
     if (angle < 0) angle += 360;
-    onSelect(Math.round(angle) % 360, saturation, lightness);
+    onSelect(Math.round(angle) % 360);
   };
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <canvas
-        ref={canvasRef}
-        width={size}
-        height={size}
-        onClick={handleClick}
+    <div className="flex flex-col items-center gap-2">
+      <canvas ref={canvasRef} width={SIZE} height={SIZE} onClick={handleClick}
         className="cursor-crosshair rounded-full"
-        style={{ filter: "drop-shadow(0 0 20px rgba(150,80,230,0.4))" }}
-      />
-      <div className="text-xs text-muted-foreground">Кликните на круг чтобы выбрать оттенок</div>
+        style={{ filter: "drop-shadow(0 0 20px rgba(150,80,230,0.4))" }} />
+      <p className="text-xs text-muted-foreground">Кликните на круг чтобы выбрать оттенок</p>
     </div>
   );
 }
 
+// ─── Photo Color Extractor ─────────────────────────────────────────────────────
+function PhotoExtractor({ onApply }: { onApply: (colors: string[]) => void }) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [colors, setColors] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const processFile = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setLoading(true);
+    setColors([]);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const url = e.target?.result as string;
+      setImageUrl(url);
+      const img = new Image();
+      img.onload = () => {
+        const extracted = extractColorsFromImage(img, 8);
+        setColors(extracted);
+        setLoading(false);
+      };
+      img.src = url;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  };
+
+  const copyColor = (hex: string) => {
+    navigator.clipboard.writeText(hex);
+    setCopied(hex);
+    setTimeout(() => setCopied(null), 1500);
+  };
+
+  return (
+    <div className="mt-6 glass rounded-3xl p-6">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+          style={{ background: "linear-gradient(135deg, hsl(195,100%,45%), hsl(270,80%,55%))" }}>
+          <Icon name="ImageSearch" size={18} className="text-white" />
+        </div>
+        <div>
+          <h3 className="font-oswald text-xl font-bold text-white">Цвета из фото</h3>
+          <p className="text-xs text-muted-foreground">Загрузите изображение — извлечём доминирующие цвета</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Drop zone */}
+        <div
+          onDrop={handleDrop}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onClick={() => fileRef.current?.click()}
+          className={`relative rounded-2xl border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center min-h-[220px] overflow-hidden
+            ${dragging ? "border-purple-400 bg-purple-500/10" : "border-white/15 hover:border-white/30 hover:bg-white/5"}`}>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden"
+            onChange={(e) => e.target.files?.[0] && processFile(e.target.files[0])} />
+          {imageUrl ? (
+            <img src={imageUrl} alt="uploaded" className="absolute inset-0 w-full h-full object-cover" />
+          ) : (
+            <div className="flex flex-col items-center gap-3 px-6 text-center">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                style={{ background: "linear-gradient(135deg, hsl(270,80%,40%), hsl(195,100%,35%))" }}>
+                <Icon name="Upload" size={24} className="text-white" />
+              </div>
+              <div>
+                <p className="text-white font-medium">Перетащите фото сюда</p>
+                <p className="text-muted-foreground text-sm mt-1">или нажмите чтобы выбрать файл</p>
+                <p className="text-muted-foreground text-xs mt-1">JPG, PNG, WebP, GIF</p>
+              </div>
+            </div>
+          )}
+          {imageUrl && (
+            <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+              <p className="text-white text-sm font-medium">Нажмите чтобы заменить</p>
+            </div>
+          )}
+        </div>
+
+        {/* Results */}
+        <div className="flex flex-col gap-3">
+          {loading && (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[120px]">
+              <div className="w-10 h-10 rounded-full border-2 border-purple-400 border-t-transparent animate-spin" />
+              <p className="text-muted-foreground text-sm">Анализирую цвета...</p>
+            </div>
+          )}
+
+          {!loading && colors.length === 0 && (
+            <div className="flex-1 flex items-center justify-center min-h-[120px]">
+              <p className="text-muted-foreground text-sm text-center">Загрузите фото<br />чтобы увидеть цвета</p>
+            </div>
+          )}
+
+          {!loading && colors.length > 0 && (
+            <>
+              <div className="flex rounded-2xl overflow-hidden h-12">
+                {colors.map((c, i) => <div key={i} className="flex-1" style={{ backgroundColor: c }} />)}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 flex-1">
+                {colors.map((c, i) => (
+                  <div key={i} onClick={() => copyColor(c)}
+                    className="flex items-center gap-3 glass-bright rounded-xl p-2.5 cursor-pointer hover:bg-white/10 transition-all group">
+                    <div className="w-9 h-9 rounded-lg flex-shrink-0 color-swatch" style={{ backgroundColor: c }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-mono text-white text-xs font-semibold">{c.toUpperCase()}</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        {["#1", "#2", "#3", "#4", "#5", "#6", "#7", "#8"][i]} по частоте
+                      </div>
+                    </div>
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      {copied === c
+                        ? <Icon name="Check" size={13} className="text-green-400" />
+                        : <Icon name="Copy" size={13} className="text-muted-foreground" />}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => onApply(colors.slice(0, 5))}
+                className="w-full py-3 rounded-2xl text-white font-semibold text-sm transition-all hover:scale-[1.02] active:scale-95"
+                style={{ background: "linear-gradient(135deg, hsl(195,100%,40%), hsl(270,80%,50%))" }}>
+                <Icon name="Sparkles" size={15} className="inline mr-2" />
+                Применить как палитру в генераторе
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Export PNG ────────────────────────────────────────────────────────────────
 function exportPaletteAsPng(palette: string[], paletteMode: string) {
-  const W = 900;
-  const H = 420;
+  const W = 900, H = 420;
   const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
+  canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d")!;
 
-  // Background
   const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, "#0d0a1a");
-  bg.addColorStop(0.5, "#0f1520");
-  bg.addColorStop(1, "#0a1015");
-  ctx.fillStyle = bg;
-  ctx.roundRect(0, 0, W, H, 24);
-  ctx.fill();
+  bg.addColorStop(0, "#0d0a1a"); bg.addColorStop(0.5, "#0f1520"); bg.addColorStop(1, "#0a1015");
+  ctx.fillStyle = bg; ctx.roundRect(0, 0, W, H, 24); ctx.fill();
 
-  // Title
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
-  ctx.font = "bold 28px sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText("🎨  Цветовая палитра", 40, 56);
+  ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.font = "bold 28px sans-serif";
+  ctx.textAlign = "left"; ctx.fillText("🎨  Цветовая палитра", 40, 56);
 
-  const modeName: Record<string, string> = {
-    analogous: "Аналогичная", complementary: "Комплементарная",
-    triadic: "Триадная", monochromatic: "Монохромная"
-  };
-  ctx.fillStyle = "rgba(255,255,255,0.4)";
-  ctx.font = "16px sans-serif";
-  ctx.fillText(`Схема: ${modeName[paletteMode] ?? paletteMode}`, 40, 82);
+  const modeNames: Record<string, string> = { analogous: "Аналогичная", complementary: "Комплементарная", triadic: "Триадная", monochromatic: "Монохромная" };
+  ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "16px sans-serif";
+  ctx.fillText(`Схема: ${modeNames[paletteMode] ?? paletteMode}`, 40, 82);
 
-  // Color blocks
   const blockW = (W - 80 - (palette.length - 1) * 12) / palette.length;
-  const blockH = 180;
-  const blockY = 110;
+  const blockH = 180, blockY = 110;
 
   palette.forEach((color, i) => {
     const x = 40 + i * (blockW + 12);
-
-    // Shadow
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 24;
-    ctx.fillStyle = color;
-    ctx.roundRect(x, blockY, blockW, blockH, 16);
-    ctx.fill();
+    ctx.shadowColor = color; ctx.shadowBlur = 24;
+    ctx.fillStyle = color; ctx.roundRect(x, blockY, blockW, blockH, 16); ctx.fill();
     ctx.shadowBlur = 0;
 
-    // Hex label inside block
-    const r2 = parseInt(color.slice(1, 3), 16);
-    const g2 = parseInt(color.slice(3, 5), 16);
-    const b2 = parseInt(color.slice(5, 7), 16);
-    const lum = 0.299 * r2 + 0.587 * g2 + 0.114 * b2;
+    const { r, g, b } = hexToRgb(color);
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
     ctx.fillStyle = lum > 140 ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.9)";
-    ctx.font = "bold 13px monospace";
-    ctx.textAlign = "center";
+    ctx.font = "bold 13px monospace"; ctx.textAlign = "center";
     ctx.fillText(color.toUpperCase(), x + blockW / 2, blockY + blockH - 18);
 
-    // Role label below
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    ctx.font = "13px sans-serif";
-    const roles = ["Основной", "Светлый", "Акцент", "Тёмный", "Доп."];
-    ctx.fillText(roles[i] ?? "", x + blockW / 2, blockY + blockH + 28);
-
-    // Color swatch strip row below role
-    ctx.fillStyle = color;
-    ctx.roundRect(x, blockY + blockH + 42, blockW, 14, 7);
-    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.font = "13px sans-serif";
+    ctx.fillText(["Основной", "Светлый", "Акцент", "Тёмный", "Доп."][i] ?? "", x + blockW / 2, blockY + blockH + 28);
   });
 
-  // Strip bar at bottom
   const stripY = H - 52;
   palette.forEach((color, i) => {
-    const x = 40 + i * ((W - 80) / palette.length);
-    const sw = (W - 80) / palette.length;
+    const x = 40 + i * ((W - 80) / palette.length), sw = (W - 80) / palette.length;
     ctx.fillStyle = color;
-    if (i === 0) {
-      ctx.roundRect(x, stripY, sw, 20, [10, 0, 0, 10]);
-    } else if (i === palette.length - 1) {
-      ctx.roundRect(x, stripY, sw, 20, [0, 10, 10, 0]);
-    } else {
-      ctx.fillRect(x, stripY, sw, 20);
-    }
+    if (i === 0) ctx.roundRect(x, stripY, sw, 20, [10, 0, 0, 10]);
+    else if (i === palette.length - 1) ctx.roundRect(x, stripY, sw, 20, [0, 10, 10, 0]);
+    else ctx.fillRect(x, stripY, sw, 20);
     ctx.fill();
   });
 
-  ctx.fillStyle = "rgba(255,255,255,0.18)";
-  ctx.font = "12px sans-serif";
-  ctx.textAlign = "right";
-  ctx.fillText("kolоrist.app", W - 40, H - 18);
+  ctx.fillStyle = "rgba(255,255,255,0.18)"; ctx.font = "12px sans-serif";
+  ctx.textAlign = "right"; ctx.fillText("kolorist.app", W - 40, H - 18);
 
   const link = document.createElement("a");
-  link.download = "palette.png";
-  link.href = canvas.toDataURL("image/png");
-  link.click();
+  link.download = "palette.png"; link.href = canvas.toDataURL("image/png"); link.click();
 }
 
+// ─── Main Component ────────────────────────────────────────────────────────────
 export default function Index() {
   const [activeSection, setActiveSection] = useState<Section>("generator");
 
@@ -329,16 +449,12 @@ export default function Index() {
   const [exportFormat, setExportFormat] = useState<"css" | "json" | "hex">("css");
   const [exportCopied, setExportCopied] = useState(false);
 
-  // Eyedropper
-  const [eyedropperSupported] = useState(() => "EyeDropper" in window);
-  const [eyedropperActive, setEyedropperActive] = useState(false);
-
   // Mixer
   const [mixColor1, setMixColor1] = useState("#9B59B6");
   const [mixColor2, setMixColor2] = useState("#00D4AA");
   const [mixRatio, setMixRatio] = useState(50);
-  const [mixSteps] = useState(7);
   const [mixCopied, setMixCopied] = useState<string | null>(null);
+  const MIX_STEPS = 7;
 
   const palette = generatePalette(hue, saturation, lightness, paletteMode);
   const baseColor = hslToHex(hue, saturation, lightness);
@@ -355,12 +471,8 @@ export default function Index() {
   const contrastLarge = contrastRatio >= 3;
 
   const getExportText = () => {
-    if (exportFormat === "css") {
-      return `:root {\n${palette.map((c, i) => `  --color-${i + 1}: ${c};`).join("\n")}\n}`;
-    }
-    if (exportFormat === "json") {
-      return JSON.stringify({ palette: palette.map((c, i) => ({ name: `color-${i + 1}`, value: c })) }, null, 2);
-    }
+    if (exportFormat === "css") return `:root {\n${palette.map((c, i) => `  --color-${i + 1}: ${c};`).join("\n")}\n}`;
+    if (exportFormat === "json") return JSON.stringify({ palette: palette.map((c, i) => ({ name: `color-${i + 1}`, value: c })) }, null, 2);
     return palette.join(", ");
   };
 
@@ -370,22 +482,6 @@ export default function Index() {
     setTimeout(() => setExportCopied(false), 2000);
   };
 
-  const activateEyedropper = async () => {
-    if (!eyedropperSupported) return;
-    setEyedropperActive(true);
-    try {
-      const eyeDropper = new (window as unknown as { EyeDropper: new () => { open: () => Promise<{ sRGBHex: string }> } }).EyeDropper();
-      const result = await eyeDropper.open();
-      const picked = result.sRGBHex as string;
-      const [h, s, l] = hexToHsl(picked);
-      setHue(h); setSaturation(s); setLightness(l);
-    } catch {
-      // user cancelled
-    } finally {
-      setEyedropperActive(false);
-    }
-  };
-
   const copyMix = (hex: string) => {
     navigator.clipboard.writeText(hex);
     setMixCopied(hex);
@@ -393,7 +489,14 @@ export default function Index() {
   };
 
   const mixedResult = mixColors(mixColor1, mixColor2, mixRatio / 100);
-  const mixStepsColors = generateMixSteps(mixColor1, mixColor2, mixSteps);
+  const mixStepsColors = generateMixSteps(mixColor1, mixColor2, MIX_STEPS);
+
+  const handlePhotoColors = (colors: string[]) => {
+    if (colors.length === 0) return;
+    const [h, s, l] = hexToHsl(colors[0]);
+    setHue(h); setSaturation(s); setLightness(l);
+    setActiveSection("generator");
+  };
 
   const navItems: { id: Section; label: string; icon: string }[] = [
     { id: "generator", label: "Генератор", icon: "Sparkles" },
@@ -403,6 +506,12 @@ export default function Index() {
     { id: "tests", label: "Тесты", icon: "ShieldCheck" },
     { id: "theory", label: "Справка", icon: "BookOpen" },
   ];
+
+  const sliderTrack = (type: "hue" | "sat" | "lit") => {
+    if (type === "hue") return "linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)";
+    if (type === "sat") return `linear-gradient(to right, hsl(${hue}, 0%, ${lightness}%), hsl(${hue}, 100%, ${lightness}%))`;
+    return `linear-gradient(to right, hsl(${hue}, ${saturation}%, 5%), hsl(${hue}, ${saturation}%, 50%), hsl(${hue}, ${saturation}%, 95%))`;
+  };
 
   return (
     <div className="min-h-screen mesh-bg relative overflow-hidden">
@@ -427,7 +536,6 @@ export default function Index() {
               <p className="text-xs text-muted-foreground -mt-0.5">подбор цветов для продукта</p>
             </div>
           </div>
-
           <div className="flex items-center gap-1 glass rounded-2xl p-1.5 overflow-x-auto">
             {navItems.map((item) => (
               <button key={item.id} onClick={() => setActiveSection(item.id)}
@@ -443,54 +551,41 @@ export default function Index() {
 
       <main className="relative z-10 max-w-6xl mx-auto px-6 pb-16">
 
+        {/* ── GENERATOR ── */}
         {activeSection === "generator" && (
           <div className="animate-slide-up">
             <div className="mb-8">
               <h2 className="font-oswald text-4xl font-bold gradient-text mb-2">Генератор палитр</h2>
               <p className="text-muted-foreground">Настройте базовый цвет и выберите схему — палитра создастся автоматически</p>
             </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left: sliders */}
               <div className="glass rounded-3xl p-6 space-y-5">
                 <div className="relative h-28 rounded-2xl overflow-hidden"
                   style={{ background: `linear-gradient(135deg, ${hslToHex(hue, saturation, Math.max(10, lightness - 20))}, ${baseColor}, ${hslToHex((hue + 30) % 360, saturation, lightness)})` }}>
-                  <div className="absolute inset-0 flex items-center justify-center gap-4">
+                  <div className="absolute inset-0 flex items-center justify-center">
                     <span className="font-oswald text-2xl font-bold text-white drop-shadow-lg tracking-widest">{baseColor.toUpperCase()}</span>
-                    {eyedropperSupported && (
-                      <button
-                        onClick={activateEyedropper}
-                        title="Захватить цвет с экрана"
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all backdrop-blur-sm
-                          ${eyedropperActive ? "bg-white/40 text-black scale-95" : "bg-black/30 text-white hover:bg-black/50"}`}>
-                        <Icon name="Pipette" size={13} />
-                        {eyedropperActive ? "Выберите цвет..." : "Пипетка"}
-                      </button>
-                    )}
                   </div>
                 </div>
 
                 {[
-                  { label: "Оттенок (Hue)", value: hue, min: 0, max: 359, unit: "°", onChange: setHue,
-                    track: "linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)",
-                    thumbColor: hslToHex(hue, 100, 50), thumbPos: (hue / 359) * 100 },
-                  { label: "Насыщенность (Saturation)", value: saturation, min: 0, max: 100, unit: "%", onChange: setSaturation,
-                    track: `linear-gradient(to right, hsl(${hue}, 0%, ${lightness}%), hsl(${hue}, 100%, ${lightness}%))`,
-                    thumbColor: baseColor, thumbPos: saturation },
-                  { label: "Яркость (Lightness)", value: lightness, min: 5, max: 95, unit: "%", onChange: setLightness,
-                    track: `linear-gradient(to right, hsl(${hue}, ${saturation}%, 5%), hsl(${hue}, ${saturation}%, 50%), hsl(${hue}, ${saturation}%, 95%))`,
-                    thumbColor: baseColor, thumbPos: ((lightness - 5) / 90) * 100 },
-                ].map((slider) => (
-                  <div key={slider.label}>
+                  { label: "Оттенок (Hue)", value: hue, min: 0, max: 359, unit: "°", onChange: setHue, track: sliderTrack("hue"), thumbColor: hslToHex(hue, 100, 50), thumbPos: (hue / 359) * 100 },
+                  { label: "Насыщенность (Saturation)", value: saturation, min: 0, max: 100, unit: "%", onChange: setSaturation, track: sliderTrack("sat"), thumbColor: baseColor, thumbPos: saturation },
+                  { label: "Яркость (Lightness)", value: lightness, min: 5, max: 95, unit: "%", onChange: setLightness, track: sliderTrack("lit"), thumbColor: baseColor, thumbPos: ((lightness - 5) / 90) * 100 },
+                ].map((s) => (
+                  <div key={s.label}>
                     <div className="flex justify-between items-center mb-2">
-                      <label className="text-sm font-medium text-white">{slider.label}</label>
-                      <span className="text-sm font-mono text-muted-foreground">{slider.value}{slider.unit}</span>
+                      <label className="text-sm font-medium text-white">{s.label}</label>
+                      <span className="text-sm font-mono text-muted-foreground">{s.value}{s.unit}</span>
                     </div>
                     <div className="relative h-4">
-                      <div className="h-4 rounded-full absolute inset-0" style={{ background: slider.track }} />
-                      <input type="range" min={slider.min} max={slider.max} value={slider.value}
-                        onChange={(e) => slider.onChange(Number(e.target.value))}
+                      <div className="h-4 rounded-full absolute inset-0" style={{ background: s.track }} />
+                      <input type="range" min={s.min} max={s.max} value={s.value}
+                        onChange={(e) => s.onChange(Number(e.target.value))}
                         className="w-full absolute inset-0 opacity-0 h-4 cursor-pointer" />
                       <div className="w-5 h-5 rounded-full border-2 border-white shadow-lg absolute top-[-2px] pointer-events-none transition-all"
-                        style={{ left: `calc(${slider.thumbPos}% - 10px)`, backgroundColor: slider.thumbColor }} />
+                        style={{ left: `calc(${s.thumbPos}% - 10px)`, backgroundColor: s.thumbColor }} />
                     </div>
                   </div>
                 ))}
@@ -514,15 +609,11 @@ export default function Index() {
                 </div>
               </div>
 
+              {/* Right: wheel + palette */}
               <div className="space-y-4">
                 <div className="glass rounded-3xl p-6 flex flex-col items-center">
                   <h3 className="font-oswald text-lg font-semibold text-white mb-4 self-start">Цветовой круг</h3>
-                  <ColorWheel
-                    hue={hue}
-                    saturation={saturation}
-                    lightness={lightness}
-                    onSelect={(h) => setHue(h)}
-                  />
+                  <ColorWheel hue={hue} saturation={saturation} lightness={lightness} onSelect={(h) => setHue(h)} />
                 </div>
                 <div className="glass rounded-3xl p-6">
                   <h3 className="font-oswald text-lg font-semibold text-white mb-4">Ваша палитра</h3>
@@ -533,14 +624,10 @@ export default function Index() {
                         <div className="w-14 h-14 rounded-xl color-swatch flex-shrink-0 shadow-lg" style={{ backgroundColor: color }} />
                         <div className="flex-1">
                           <div className="font-mono text-white font-semibold">{color.toUpperCase()}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {["Основной", "Светлый", "Акцент", "Тёмный", "Дополнительный"][i]}
-                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">{["Основной", "Светлый", "Акцент", "Тёмный", "Дополнительный"][i]}</div>
                         </div>
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          {copiedColor === color
-                            ? <Icon name="Check" size={16} className="text-green-400" />
-                            : <Icon name="Copy" size={16} className="text-muted-foreground" />}
+                          {copiedColor === color ? <Icon name="Check" size={16} className="text-green-400" /> : <Icon name="Copy" size={16} className="text-muted-foreground" />}
                         </div>
                       </div>
                     ))}
@@ -549,13 +636,14 @@ export default function Index() {
                 <div className="glass rounded-3xl p-4">
                   <h3 className="font-oswald text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Превью</h3>
                   <div className="flex rounded-2xl overflow-hidden h-16">
-                    {palette.map((color, i) => (
-                      <div key={i} className="flex-1 transition-all hover:flex-[2]" style={{ backgroundColor: color }} />
-                    ))}
+                    {palette.map((color, i) => <div key={i} className="flex-1 transition-all hover:flex-[2]" style={{ backgroundColor: color }} />)}
                   </div>
                 </div>
               </div>
             </div>
+
+            {/* Photo Extractor */}
+            <PhotoExtractor onApply={handlePhotoColors} />
 
             {/* Color Mixer */}
             <div className="mt-6 glass rounded-3xl p-6">
@@ -573,33 +661,19 @@ export default function Index() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center mb-6">
                 {/* Color A */}
                 <div className="space-y-3">
-                  <div className="text-sm font-medium text-white mb-2">Цвет A</div>
-                  <div className="h-20 rounded-2xl flex items-center justify-center relative overflow-hidden cursor-pointer"
-                    style={{ backgroundColor: mixColor1 }}>
-                    <span className="font-mono text-xs font-bold drop-shadow"
-                      style={{ color: getLuminance(mixColor1) > 0.4 ? "#000" : "#fff" }}>
-                      {mixColor1.toUpperCase()}
-                    </span>
+                  <div className="text-sm font-medium text-white">Цвет A</div>
+                  <div className="h-20 rounded-2xl flex items-center justify-center" style={{ backgroundColor: mixColor1 }}>
+                    <span className="font-mono text-xs font-bold drop-shadow" style={{ color: getLuminance(mixColor1) > 0.4 ? "#000" : "#fff" }}>{mixColor1.toUpperCase()}</span>
                   </div>
                   <div className="flex gap-2">
                     <input type="color" value={mixColor1} onChange={(e) => setMixColor1(e.target.value)}
                       className="w-10 h-9 rounded-lg border border-white/10 cursor-pointer bg-transparent flex-shrink-0" />
                     <input type="text" value={mixColor1} onChange={(e) => setMixColor1(e.target.value)}
                       className="flex-1 glass rounded-xl px-3 text-xs font-mono text-white border border-white/10 bg-transparent outline-none focus:border-white/30 min-w-0" />
-                    {eyedropperSupported && (
-                      <button onClick={async () => {
-                        try {
-                          const ed = new (window as unknown as { EyeDropper: new () => { open: () => Promise<{ sRGBHex: string }> } }).EyeDropper();
-                          const r = await ed.open(); setMixColor1(r.sRGBHex);
-                        } catch {}
-                      }} title="Пипетка" className="glass px-2 rounded-xl text-muted-foreground hover:text-white transition-colors">
-                        <Icon name="Pipette" size={13} />
-                      </button>
-                    )}
                   </div>
                 </div>
 
-                {/* Mix result + slider */}
+                {/* Result */}
                 <div className="flex flex-col items-center gap-3">
                   <div className="w-24 h-24 rounded-full shadow-2xl color-swatch"
                     style={{ backgroundColor: mixedResult, boxShadow: `0 0 30px ${mixedResult}80` }} />
@@ -617,29 +691,15 @@ export default function Index() {
 
                 {/* Color B */}
                 <div className="space-y-3">
-                  <div className="text-sm font-medium text-white mb-2">Цвет B</div>
-                  <div className="h-20 rounded-2xl flex items-center justify-center relative overflow-hidden cursor-pointer"
-                    style={{ backgroundColor: mixColor2 }}>
-                    <span className="font-mono text-xs font-bold drop-shadow"
-                      style={{ color: getLuminance(mixColor2) > 0.4 ? "#000" : "#fff" }}>
-                      {mixColor2.toUpperCase()}
-                    </span>
+                  <div className="text-sm font-medium text-white">Цвет B</div>
+                  <div className="h-20 rounded-2xl flex items-center justify-center" style={{ backgroundColor: mixColor2 }}>
+                    <span className="font-mono text-xs font-bold drop-shadow" style={{ color: getLuminance(mixColor2) > 0.4 ? "#000" : "#fff" }}>{mixColor2.toUpperCase()}</span>
                   </div>
                   <div className="flex gap-2">
                     <input type="color" value={mixColor2} onChange={(e) => setMixColor2(e.target.value)}
                       className="w-10 h-9 rounded-lg border border-white/10 cursor-pointer bg-transparent flex-shrink-0" />
                     <input type="text" value={mixColor2} onChange={(e) => setMixColor2(e.target.value)}
                       className="flex-1 glass rounded-xl px-3 text-xs font-mono text-white border border-white/10 bg-transparent outline-none focus:border-white/30 min-w-0" />
-                    {eyedropperSupported && (
-                      <button onClick={async () => {
-                        try {
-                          const ed = new (window as unknown as { EyeDropper: new () => { open: () => Promise<{ sRGBHex: string }> } }).EyeDropper();
-                          const r = await ed.open(); setMixColor2(r.sRGBHex);
-                        } catch {}
-                      }} title="Пипетка" className="glass px-2 rounded-xl text-muted-foreground hover:text-white transition-colors">
-                        <Icon name="Pipette" size={13} />
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
@@ -651,24 +711,22 @@ export default function Index() {
                   <span className="text-sm font-mono text-muted-foreground">A {mixRatio}% — B {100 - mixRatio}%</span>
                 </div>
                 <div className="relative h-5">
-                  <div className="h-5 rounded-full absolute inset-0"
-                    style={{ background: `linear-gradient(to right, ${mixColor1}, ${mixColor2})` }} />
+                  <div className="h-5 rounded-full absolute inset-0" style={{ background: `linear-gradient(to right, ${mixColor1}, ${mixColor2})` }} />
                   <input type="range" min={0} max={100} value={mixRatio}
                     onChange={(e) => setMixRatio(Number(e.target.value))}
                     className="w-full absolute inset-0 opacity-0 h-5 cursor-pointer" />
-                  <div className="w-6 h-6 rounded-full border-3 border-white shadow-xl absolute top-[-2px] pointer-events-none transition-all"
-                    style={{ left: `calc(${mixRatio}% - 12px)`, backgroundColor: mixedResult, borderWidth: 3 }} />
+                  <div className="w-6 h-6 rounded-full border-white shadow-xl absolute top-[-2px] pointer-events-none transition-all"
+                    style={{ left: `calc(${mixRatio}% - 12px)`, backgroundColor: mixedResult, borderWidth: 3, borderStyle: "solid", borderColor: "white" }} />
                 </div>
               </div>
 
-              {/* Gradient steps */}
+              {/* Steps */}
               <div>
-                <div className="text-sm font-medium text-white mb-3">Градиент из {mixSteps} шагов</div>
+                <div className="text-sm font-medium text-white mb-3">Градиент из {MIX_STEPS} шагов</div>
                 <div className="flex gap-2">
                   {mixStepsColors.map((c, i) => (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5 cursor-pointer group"
-                      onClick={() => copyMix(c)}>
-                      <div className="w-full rounded-xl transition-all group-hover:scale-105 group-hover:shadow-lg"
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => copyMix(c)}>
+                      <div className="w-full rounded-xl transition-all group-hover:scale-105"
                         style={{ height: 48, backgroundColor: c, boxShadow: mixCopied === c ? `0 0 12px ${c}` : undefined }} />
                       <span className="font-mono text-[9px] text-muted-foreground hidden md:block">{c.toUpperCase()}</span>
                       {mixCopied === c && <Icon name="Check" size={10} className="text-green-400" />}
@@ -680,6 +738,7 @@ export default function Index() {
           </div>
         )}
 
+        {/* ── ANALYZER ── */}
         {activeSection === "analyzer" && (
           <div className="animate-slide-up">
             <div className="mb-8">
@@ -740,8 +799,7 @@ export default function Index() {
                   <input type="text" value={color2} onChange={(e) => setColor2(e.target.value)}
                     className="flex-1 glass rounded-xl px-4 text-sm font-mono text-white border border-white/10 bg-transparent outline-none focus:border-white/30" />
                 </div>
-                <p className="text-sm text-muted-foreground">Нажмите на цветной квадрат или введите HEX-код</p>
-
+                <p className="text-sm text-muted-foreground">Нажмите на квадрат или введите HEX-код</p>
                 <div className="glass-bright rounded-2xl p-4">
                   <div className="text-4xl font-oswald font-bold text-white mb-1">{contrastRatio.toFixed(2)}:1</div>
                   <div className="text-sm text-muted-foreground">Коэффициент контраста</div>
@@ -772,6 +830,7 @@ export default function Index() {
           </div>
         )}
 
+        {/* ── GALLERY ── */}
         {activeSection === "gallery" && (
           <div className="animate-slide-up">
             <div className="mb-8">
@@ -805,6 +864,7 @@ export default function Index() {
           </div>
         )}
 
+        {/* ── EXPORT ── */}
         {activeSection === "export" && (
           <div className="animate-slide-up">
             <div className="mb-8">
@@ -812,30 +872,24 @@ export default function Index() {
               <p className="text-muted-foreground">Сохраните текущую палитру в нужном формате — код или красивое PNG-изображение</p>
             </div>
 
-            {/* PNG export card */}
             <div className="glass rounded-3xl p-6 mb-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h3 className="font-oswald text-xl font-bold text-white mb-1">Скачать как изображение</h3>
                   <p className="text-sm text-muted-foreground">Красивая карточка палитры в формате PNG — для презентаций, портфолио и Figma</p>
                 </div>
-                <button
-                  onClick={() => exportPaletteAsPng(palette, paletteMode)}
+                <button onClick={() => exportPaletteAsPng(palette, paletteMode)}
                   className="flex items-center gap-3 px-6 py-3 rounded-2xl text-white font-semibold text-sm whitespace-nowrap transition-all hover:scale-105 active:scale-95"
                   style={{ background: "linear-gradient(135deg, hsl(320,90%,55%), hsl(270,80%,50%), hsl(195,100%,45%))" }}>
                   <Icon name="ImageDown" size={18} />
                   Скачать PNG
                 </button>
               </div>
-
-              {/* Preview of PNG card */}
               <div className="mt-5 rounded-2xl overflow-hidden border border-white/10"
-                style={{ background: "linear-gradient(135deg, #0d0a1a, #0f1520, #0a1015)" }}>
+                style={{ background: "linear-gradient(135deg, #0d0a1a, #0f1520)" }}>
                 <div className="p-5">
                   <div className="text-white font-bold text-base mb-1">🎨  Цветовая палитра</div>
-                  <div className="text-xs text-white/40 mb-4">
-                    Схема: {{ analogous: "Аналогичная", complementary: "Комплементарная", triadic: "Триадная", monochromatic: "Монохромная" }[paletteMode]}
-                  </div>
+                  <div className="text-xs text-white/40 mb-4">Схема: {{ analogous: "Аналогичная", complementary: "Комплементарная", triadic: "Триадная", monochromatic: "Монохромная" }[paletteMode]}</div>
                   <div className="flex gap-2 mb-3">
                     {palette.map((c, i) => (
                       <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
@@ -882,7 +936,7 @@ export default function Index() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-oswald text-lg font-semibold text-white">Результат</h3>
                   <button onClick={copyExport}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white"
                     style={{ background: "linear-gradient(135deg, hsl(270,80%,50%), hsl(195,100%,45%))" }}>
                     <Icon name={exportCopied ? "Check" : "Copy"} size={14} />
                     {exportCopied ? "Скопировано!" : "Копировать"}
@@ -896,6 +950,7 @@ export default function Index() {
           </div>
         )}
 
+        {/* ── TESTS ── */}
         {activeSection === "tests" && (
           <div className="animate-slide-up">
             <div className="mb-8">
@@ -904,12 +959,8 @@ export default function Index() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               {palette.map((bgColor, i) => {
-                const lightContrast = getContrastRatio(bgColor, "#FFFFFF");
-                const darkContrast = getContrastRatio(bgColor, "#000000");
-                const bestContrast = Math.max(lightContrast, darkContrast);
-                const textColor = lightContrast > darkContrast ? "#FFFFFF" : "#000000";
-                const passes = bestContrast >= 4.5;
-                const passesLarge = bestContrast >= 3;
+                const lc = getContrastRatio(bgColor, "#FFFFFF"), dc = getContrastRatio(bgColor, "#000000");
+                const best = Math.max(lc, dc), textColor = lc > dc ? "#FFFFFF" : "#000000";
                 return (
                   <div key={i} className="glass rounded-3xl p-5">
                     <div className="flex items-center gap-4 mb-4">
@@ -922,16 +973,13 @@ export default function Index() {
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className={`rounded-xl p-3 text-center ${passes ? "bg-green-500/15 border border-green-500/20" : "bg-red-500/15 border border-red-500/20"}`}>
-                        <Icon name={passes ? "Check" : "X"} size={16} className={`mx-auto mb-1 ${passes ? "text-green-400" : "text-red-400"}`} />
-                        <div className="text-xs text-white font-medium">AA норм.</div>
-                        <div className="text-xs text-muted-foreground">{bestContrast.toFixed(1)}:1</div>
-                      </div>
-                      <div className={`rounded-xl p-3 text-center ${passesLarge ? "bg-green-500/15 border border-green-500/20" : "bg-red-500/15 border border-red-500/20"}`}>
-                        <Icon name={passesLarge ? "Check" : "X"} size={16} className={`mx-auto mb-1 ${passesLarge ? "text-green-400" : "text-red-400"}`} />
-                        <div className="text-xs text-white font-medium">AA крупн.</div>
-                        <div className="text-xs text-muted-foreground">{bestContrast.toFixed(1)}:1</div>
-                      </div>
+                      {[{ label: "AA норм.", pass: best >= 4.5 }, { label: "AA крупн.", pass: best >= 3 }].map((c) => (
+                        <div key={c.label} className={`rounded-xl p-3 text-center ${c.pass ? "bg-green-500/15 border border-green-500/20" : "bg-red-500/15 border border-red-500/20"}`}>
+                          <Icon name={c.pass ? "Check" : "X"} size={16} className={`mx-auto mb-1 ${c.pass ? "text-green-400" : "text-red-400"}`} />
+                          <div className="text-xs text-white font-medium">{c.label}</div>
+                          <div className="text-xs text-muted-foreground">{best.toFixed(1)}:1</div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 );
@@ -949,9 +997,7 @@ export default function Index() {
                 ].map((type) => (
                   <div key={type.name} className="glass-bright rounded-2xl p-3">
                     <div className="flex rounded-xl overflow-hidden h-10 mb-2">
-                      {palette.map((c, j) => (
-                        <div key={j} className="flex-1" style={{ backgroundColor: c, filter: type.filter }} />
-                      ))}
+                      {palette.map((c, j) => <div key={j} className="flex-1" style={{ backgroundColor: c, filter: type.filter }} />)}
                     </div>
                     <div className="text-xs text-muted-foreground text-center">{type.name}</div>
                   </div>
@@ -961,6 +1007,7 @@ export default function Index() {
           </div>
         )}
 
+        {/* ── THEORY ── */}
         {activeSection === "theory" && (
           <div className="animate-slide-up">
             <div className="mb-8">
