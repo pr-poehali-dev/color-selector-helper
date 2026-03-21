@@ -169,13 +169,24 @@ const THEORY_TOPICS = [
 ];
 
 // ─── RGBWheel ──────────────────────────────────────────────────────────────────
-// Настоящий RGB-круг: пикселизированный обход, цвет через угол→R,G,B смешивание
 function ColorWheel({ hue, onSelect }: {
   hue: number; saturation?: number; lightness?: number;
   onSelect: (h: number) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isDragging = useRef(false);
   const SIZE = 240, CX = 120, CY = 120, R = 112;
+
+  const getAngleFromEvent = (e: React.MouseEvent | MouseEvent) => {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    const scaleX = SIZE / rect.width;
+    const scaleY = SIZE / rect.height;
+    const x = (e.clientX - rect.left) * scaleX - CX;
+    const y = (e.clientY - rect.top) * scaleY - CY;
+    let angle = Math.atan2(y, x) * 180 / Math.PI;
+    if (angle < 0) angle += 360;
+    return Math.round(angle) % 360;
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -190,12 +201,10 @@ function ColorWheel({ hue, onSelect }: {
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist > R) continue;
 
-        // angle in [0, 2π)
-        let angle = Math.atan2(dy, dx); // -π..π
+        let angle = Math.atan2(dy, dx);
         if (angle < 0) angle += 2 * Math.PI;
-        const t = angle / (2 * Math.PI); // 0..1
+        const t = angle / (2 * Math.PI);
 
-        // RGB-circle: R at 0°, G at 120°, B at 240°
         const r6 = t * 6;
         const sector = Math.floor(r6) % 6;
         const frac = r6 - Math.floor(r6);
@@ -208,11 +217,10 @@ function ColorWheel({ hue, onSelect }: {
         else if (sector === 4) { r = Math.round(frac * 255); g = 0; b = 255; }
         else { r = 255; g = 0; b = Math.round((1 - frac) * 255); }
 
-        // blend to white towards center
-        const saturation = dist / R;
-        r = Math.round(r * saturation + 255 * (1 - saturation));
-        g = Math.round(g * saturation + 255 * (1 - saturation));
-        b = Math.round(b * saturation + 255 * (1 - saturation));
+        const sat = dist / R;
+        r = Math.round(r * sat + 255 * (1 - sat));
+        g = Math.round(g * sat + 255 * (1 - sat));
+        b = Math.round(b * sat + 255 * (1 - sat));
 
         const idx = (py * SIZE + px) * 4;
         data[idx] = r; data[idx + 1] = g; data[idx + 2] = b; data[idx + 3] = 255;
@@ -220,34 +228,40 @@ function ColorWheel({ hue, onSelect }: {
     }
     ctx.putImageData(imageData, 0, 0);
 
-    // dot for selected hue
     const hueAngle = (hue / 360) * 2 * Math.PI;
     const dotDist = R * 0.78;
     const dotX = CX + dotDist * Math.cos(hueAngle);
     const dotY = CY + dotDist * Math.sin(hueAngle);
     ctx.beginPath();
-    ctx.arc(dotX, dotY, 9, 0, Math.PI * 2);
+    ctx.arc(dotX, dotY, 10, 0, Math.PI * 2);
     ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
     ctx.fill();
     ctx.strokeStyle = "white"; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(dotX, dotY, 14, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 2; ctx.stroke();
   }, [hue]);
 
-  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = canvasRef.current!.getBoundingClientRect();
-    const x = e.clientX - rect.left - CX, y = e.clientY - rect.top - CY;
-    const dist = Math.sqrt(x * x + y * y);
-    if (dist > R + 8) return;
-    let angle = Math.atan2(y, x) * 180 / Math.PI;
-    if (angle < 0) angle += 360;
-    onSelect(Math.round(angle) % 360);
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => { if (isDragging.current) onSelect(getAngleFromEvent(e)); };
+    const onUp = () => { isDragging.current = false; };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+  }, [onSelect]);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    isDragging.current = true;
+    onSelect(getAngleFromEvent(e));
   };
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <canvas ref={canvasRef} width={SIZE} height={SIZE} onClick={handleClick}
-        className="cursor-crosshair rounded-full"
-        style={{ filter: "drop-shadow(0 0 20px rgba(150,80,230,0.4))" }} />
-      <p className="text-xs text-muted-foreground">Кликните на RGB-круг чтобы выбрать цвет</p>
+      <canvas ref={canvasRef} width={SIZE} height={SIZE}
+        onMouseDown={handleMouseDown}
+        className="cursor-crosshair rounded-full select-none"
+        style={{ filter: "drop-shadow(0 0 20px rgba(150,80,230,0.4))", touchAction: "none" }} />
+      <p className="text-xs text-muted-foreground">Кликните или тяните по RGB-кругу чтобы выбрать цвет</p>
     </div>
   );
 }
@@ -1131,6 +1145,78 @@ export default function Index() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* WCAG 2.1 Block */}
+            <div className="glass rounded-3xl p-6 mb-4">
+              <div className="flex items-start gap-4 mb-5">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, #2563eb, #7c3aed)" }}>
+                  <Icon name="ShieldCheck" size={22} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="font-oswald text-2xl font-bold text-white mb-1">Что такое WCAG 2.1?</h3>
+                  <p className="text-sm text-muted-foreground">Web Content Accessibility Guidelines — международный стандарт доступности сайтов</p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-5">
+                WCAG 2.1 — это набор правил от организации W3C, которым должны соответствовать сайты, чтобы ими могли пользоваться <span className="text-white">все люди без исключения</span>: с нарушениями зрения, слуха, моторики или когнитивными особенностями. Стандарт используется в законодательстве многих стран как обязательное требование к государственным и коммерческим сайтам.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+                {[
+                  {
+                    level: "A",
+                    label: "Уровень A",
+                    sublabel: "Базовый",
+                    color: "#f59e0b",
+                    desc: "Минимальные требования. Без них сайтом невозможно пользоваться людям с ограничениями.",
+                  },
+                  {
+                    level: "AA",
+                    label: "Уровень AA",
+                    sublabel: "Стандартный",
+                    color: "#10b981",
+                    desc: "Основной ориентир для большинства сайтов. Именно этот уровень требуется по закону в большинстве стран.",
+                  },
+                  {
+                    level: "AAA",
+                    label: "Уровень AAA",
+                    sublabel: "Расширенный",
+                    color: "#8b5cf6",
+                    desc: "Наивысший уровень. Применяется для специализированных ресурсов и государственных порталов.",
+                  },
+                ].map((lvl) => (
+                  <div key={lvl.level} className="glass-bright rounded-2xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-oswald text-2xl font-bold" style={{ color: lvl.color }}>{lvl.level}</span>
+                      <div>
+                        <div className="text-white text-sm font-semibold leading-none">{lvl.label}</div>
+                        <div className="text-muted-foreground text-xs">{lvl.sublabel}</div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{lvl.desc}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="glass-bright rounded-2xl p-4">
+                <h4 className="font-oswald text-base font-bold text-white mb-3">Требования к контрасту текста (уровень AA)</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { label: "Обычный текст", ratio: "4.5 : 1", example: "Кегль до 18pt", color: "#10b981" },
+                    { label: "Крупный текст", ratio: "3.0 : 1", example: "Кегль 18pt+ или жирный 14pt+", color: "#3b82f6" },
+                    { label: "Элементы интерфейса", ratio: "3.0 : 1", example: "Кнопки, поля ввода, иконки", color: "#8b5cf6" },
+                    { label: "Декоративные элементы", ratio: "—", example: "Фоны, иллюстрации — без требований", color: "#6b7280" },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: `${item.color}12`, border: `1px solid ${item.color}30` }}>
+                      <span className="font-oswald text-xl font-bold w-16 text-center flex-shrink-0" style={{ color: item.color }}>{item.ratio}</span>
+                      <div>
+                        <div className="text-white text-sm font-medium">{item.label}</div>
+                        <div className="text-muted-foreground text-xs">{item.example}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
