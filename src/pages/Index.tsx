@@ -168,9 +168,10 @@ const THEORY_TOPICS = [
   { icon: "Wand2", title: "60-30-10 Правило", desc: "Доминирующий цвет занимает 60%, вторичный — 30%, акцентный — 10%. Это создаёт визуальный баланс и гармонию в дизайне." },
 ];
 
-// ─── ColorWheel ────────────────────────────────────────────────────────────────
-function ColorWheel({ hue, saturation, lightness, onSelect }: {
-  hue: number; saturation: number; lightness: number;
+// ─── RGBWheel ──────────────────────────────────────────────────────────────────
+// Настоящий RGB-круг: пикселизированный обход, цвет через угол→R,G,B смешивание
+function ColorWheel({ hue, onSelect }: {
+  hue: number; saturation?: number; lightness?: number;
   onSelect: (h: number) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -180,45 +181,63 @@ function ColorWheel({ hue, saturation, lightness, onSelect }: {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
-    ctx.clearRect(0, 0, SIZE, SIZE);
+    const imageData = ctx.createImageData(SIZE, SIZE);
+    const data = imageData.data;
 
-    for (let deg = 0; deg < 360; deg++) {
-      const grad = ctx.createRadialGradient(CX, CY, R * 0.42, CX, CY, R);
-      grad.addColorStop(0, `hsla(${deg}, 10%, ${lightness}%, 0.15)`);
-      grad.addColorStop(1, `hsl(${deg}, ${saturation}%, ${lightness}%)`);
-      ctx.beginPath();
-      ctx.moveTo(CX, CY);
-      ctx.arc(CX, CY, R, (deg - 1) * Math.PI / 180, (deg + 1) * Math.PI / 180);
-      ctx.closePath();
-      ctx.fillStyle = grad;
-      ctx.fill();
+    for (let py = 0; py < SIZE; py++) {
+      for (let px = 0; px < SIZE; px++) {
+        const dx = px - CX, dy = py - CY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > R) continue;
+
+        // angle in [0, 2π)
+        let angle = Math.atan2(dy, dx); // -π..π
+        if (angle < 0) angle += 2 * Math.PI;
+        const t = angle / (2 * Math.PI); // 0..1
+
+        // RGB-circle: R at 0°, G at 120°, B at 240°
+        const r6 = t * 6;
+        const sector = Math.floor(r6) % 6;
+        const frac = r6 - Math.floor(r6);
+
+        let r = 0, g = 0, b = 0;
+        if (sector === 0) { r = 255; g = Math.round(frac * 255); b = 0; }
+        else if (sector === 1) { r = Math.round((1 - frac) * 255); g = 255; b = 0; }
+        else if (sector === 2) { r = 0; g = 255; b = Math.round(frac * 255); }
+        else if (sector === 3) { r = 0; g = Math.round((1 - frac) * 255); b = 255; }
+        else if (sector === 4) { r = Math.round(frac * 255); g = 0; b = 255; }
+        else { r = 255; g = 0; b = Math.round((1 - frac) * 255); }
+
+        // blend to white towards center
+        const saturation = dist / R;
+        r = Math.round(r * saturation + 255 * (1 - saturation));
+        g = Math.round(g * saturation + 255 * (1 - saturation));
+        b = Math.round(b * saturation + 255 * (1 - saturation));
+
+        const idx = (py * SIZE + px) * 4;
+        data[idx] = r; data[idx + 1] = g; data[idx + 2] = b; data[idx + 3] = 255;
+      }
     }
+    ctx.putImageData(imageData, 0, 0);
 
-    const innerR = R * 0.4;
-    const cg = ctx.createRadialGradient(CX, CY, 0, CX, CY, innerR);
-    cg.addColorStop(0, `hsl(${hue}, ${saturation}%, ${Math.min(lightness + 10, 95)}%)`);
-    cg.addColorStop(1, `hsl(${hue}, ${saturation}%, ${lightness}%)`);
+    // dot for selected hue
+    const hueAngle = (hue / 360) * 2 * Math.PI;
+    const dotDist = R * 0.78;
+    const dotX = CX + dotDist * Math.cos(hueAngle);
+    const dotY = CY + dotDist * Math.sin(hueAngle);
     ctx.beginPath();
-    ctx.arc(CX, CY, innerR, 0, Math.PI * 2);
-    ctx.fillStyle = cg;
-    ctx.fill();
-
-    const angle = (hue - 90) * Math.PI / 180;
-    const dotR = R * 0.72;
-    const dx = CX + dotR * Math.cos(angle), dy = CY + dotR * Math.sin(angle);
-    ctx.beginPath();
-    ctx.arc(dx, dy, 9, 0, Math.PI * 2);
-    ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    ctx.arc(dotX, dotY, 9, 0, Math.PI * 2);
+    ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
     ctx.fill();
     ctx.strokeStyle = "white"; ctx.lineWidth = 2.5; ctx.stroke();
-  }, [hue, saturation, lightness]);
+  }, [hue]);
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect();
     const x = e.clientX - rect.left - CX, y = e.clientY - rect.top - CY;
     const dist = Math.sqrt(x * x + y * y);
-    if (dist < R * 0.38 || dist > R + 8) return;
-    let angle = Math.atan2(y, x) * 180 / Math.PI + 90;
+    if (dist > R + 8) return;
+    let angle = Math.atan2(y, x) * 180 / Math.PI;
     if (angle < 0) angle += 360;
     onSelect(Math.round(angle) % 360);
   };
@@ -228,7 +247,7 @@ function ColorWheel({ hue, saturation, lightness, onSelect }: {
       <canvas ref={canvasRef} width={SIZE} height={SIZE} onClick={handleClick}
         className="cursor-crosshair rounded-full"
         style={{ filter: "drop-shadow(0 0 20px rgba(150,80,230,0.4))" }} />
-      <p className="text-xs text-muted-foreground">Кликните на круг чтобы выбрать оттенок</p>
+      <p className="text-xs text-muted-foreground">Кликните на RGB-круг чтобы выбрать цвет</p>
     </div>
   );
 }
@@ -1026,25 +1045,7 @@ export default function Index() {
                 );
               })}
             </div>
-            <div className="glass rounded-3xl p-6">
-              <h3 className="font-oswald text-xl font-bold text-white mb-2">Симуляция цветовой слепоты</h3>
-              <p className="text-muted-foreground text-sm mb-4">Около 8% мужчин и 0.5% женщин имеют нарушения цветового восприятия</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[
-                  { name: "Нормальное", filter: "none" },
-                  { name: "Протанопия", filter: "saturate(0) sepia(100%) hue-rotate(0deg)" },
-                  { name: "Дейтеранопия", filter: "saturate(0.4) sepia(60%) hue-rotate(90deg)" },
-                  { name: "Тританопия", filter: "saturate(0.4) sepia(60%) hue-rotate(200deg)" },
-                ].map((type) => (
-                  <div key={type.name} className="glass-bright rounded-2xl p-3">
-                    <div className="flex rounded-xl overflow-hidden h-10 mb-2">
-                      {palette.map((c, j) => <div key={j} className="flex-1" style={{ backgroundColor: c, filter: type.filter }} />)}
-                    </div>
-                    <div className="text-xs text-muted-foreground text-center">{type.name}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
+
           </div>
         )}
 
