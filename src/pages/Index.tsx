@@ -234,28 +234,28 @@ function ColorWheel({ hue, saturation, lightness, onSelect }: {
 }
 
 // ─── Photo Color Extractor ─────────────────────────────────────────────────────
-function PhotoExtractor({ onApply }: { onApply: (colors: string[]) => void }) {
+type PhotoAction = "palette" | "analyzer" | "mixer-a" | "mixer-b";
+
+function PhotoExtractor({ onApply }: {
+  onApply: (colors: string[], action: PhotoAction) => void;
+}) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [colors, setColors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [activeColor, setActiveColor] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const processFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
-    setLoading(true);
-    setColors([]);
+    setLoading(true); setColors([]);
     const reader = new FileReader();
     reader.onload = (e) => {
       const url = e.target?.result as string;
       setImageUrl(url);
       const img = new Image();
-      img.onload = () => {
-        const extracted = extractColorsFromImage(img, 8);
-        setColors(extracted);
-        setLoading(false);
-      };
+      img.onload = () => { setColors(extractColorsFromImage(img, 8)); setLoading(false); };
       img.src = url;
     };
     reader.readAsDataURL(file);
@@ -327,46 +327,76 @@ function PhotoExtractor({ onApply }: { onApply: (colors: string[]) => void }) {
               <p className="text-muted-foreground text-sm">Анализирую цвета...</p>
             </div>
           )}
-
           {!loading && colors.length === 0 && (
             <div className="flex-1 flex items-center justify-center min-h-[120px]">
               <p className="text-muted-foreground text-sm text-center">Загрузите фото<br />чтобы увидеть цвета</p>
             </div>
           )}
-
           {!loading && colors.length > 0 && (
             <>
               <div className="flex rounded-2xl overflow-hidden h-12">
-                {colors.map((c, i) => <div key={i} className="flex-1" style={{ backgroundColor: c }} />)}
+                {colors.map((c, i) => (
+                  <div key={i} className="flex-1 cursor-pointer transition-all hover:flex-[2]"
+                    style={{ backgroundColor: c }}
+                    onClick={() => setActiveColor(activeColor === c ? null : c)} />
+                ))}
               </div>
 
               <div className="grid grid-cols-2 gap-2 flex-1">
                 {colors.map((c, i) => (
-                  <div key={i} onClick={() => copyColor(c)}
-                    className="flex items-center gap-3 glass-bright rounded-xl p-2.5 cursor-pointer hover:bg-white/10 transition-all group">
-                    <div className="w-9 h-9 rounded-lg flex-shrink-0 color-swatch" style={{ backgroundColor: c }} />
+                  <div key={i}
+                    className={`flex items-center gap-2 glass-bright rounded-xl p-2 cursor-pointer transition-all group ${activeColor === c ? "ring-2 ring-white/40 bg-white/10" : "hover:bg-white/10"}`}
+                    onClick={() => setActiveColor(activeColor === c ? null : c)}>
+                    <div className="w-8 h-8 rounded-lg flex-shrink-0 color-swatch" style={{ backgroundColor: c }} />
                     <div className="flex-1 min-w-0">
-                      <div className="font-mono text-white text-xs font-semibold">{c.toUpperCase()}</div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5">
-                        {["#1", "#2", "#3", "#4", "#5", "#6", "#7", "#8"][i]} по частоте
-                      </div>
+                      <div className="font-mono text-white text-[11px] font-semibold">{c.toUpperCase()}</div>
+                      <div className="text-[9px] text-muted-foreground">#{i + 1} по частоте</div>
                     </div>
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                      onClick={(e) => { e.stopPropagation(); copyColor(c); }}>
                       {copied === c
-                        ? <Icon name="Check" size={13} className="text-green-400" />
-                        : <Icon name="Copy" size={13} className="text-muted-foreground" />}
-                    </div>
+                        ? <Icon name="Check" size={11} className="text-green-400" />
+                        : <Icon name="Copy" size={11} className="text-muted-foreground" />}
+                    </button>
                   </div>
                 ))}
               </div>
 
-              <button
-                onClick={() => onApply(colors.slice(0, 5))}
-                className="w-full py-3 rounded-2xl text-white font-semibold text-sm transition-all hover:scale-[1.02] active:scale-95"
-                style={{ background: "linear-gradient(135deg, hsl(195,100%,40%), hsl(270,80%,50%))" }}>
-                <Icon name="Sparkles" size={15} className="inline mr-2" />
-                Применить как палитру в генераторе
-              </button>
+              {/* Action panel for selected color */}
+              {activeColor && (
+                <div className="rounded-2xl p-3 space-y-2 animate-fade-in" style={{ backgroundColor: `${activeColor}22`, border: `1px solid ${activeColor}44` }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-5 h-5 rounded-md" style={{ backgroundColor: activeColor }} />
+                    <span className="font-mono text-white text-xs font-bold">{activeColor.toUpperCase()}</span>
+                    <span className="text-muted-foreground text-xs">— выберите действие:</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      { action: "analyzer" as PhotoAction, icon: "ScanEye", label: "→ Анализатор (текст)" },
+                      { action: "mixer-a" as PhotoAction, icon: "Blend", label: "→ Смешать (цвет A)" },
+                      { action: "mixer-b" as PhotoAction, icon: "Blend", label: "→ Смешать (цвет B)" },
+                      { action: "palette" as PhotoAction, icon: "Sparkles", label: "→ В генератор" },
+                    ]).map(({ action, icon, label }) => (
+                      <button key={action}
+                        onClick={() => { onApply([activeColor], action); setActiveColor(null); }}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-white glass transition-all hover:bg-white/15 text-left">
+                        <Icon name={icon} size={12} />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!activeColor && (
+                <button
+                  onClick={() => onApply(colors.slice(0, 5), "palette")}
+                  className="w-full py-3 rounded-2xl text-white font-semibold text-sm transition-all hover:scale-[1.02] active:scale-95"
+                  style={{ background: "linear-gradient(135deg, hsl(195,100%,40%), hsl(270,80%,50%))" }}>
+                  <Icon name="Sparkles" size={15} className="inline mr-2" />
+                  Применить как палитру в генераторе
+                </button>
+              )}
             </>
           )}
         </div>
@@ -491,11 +521,22 @@ export default function Index() {
   const mixedResult = mixColors(mixColor1, mixColor2, mixRatio / 100);
   const mixStepsColors = generateMixSteps(mixColor1, mixColor2, MIX_STEPS);
 
-  const handlePhotoColors = (colors: string[]) => {
+  const handlePhotoColors = (colors: string[], action: PhotoAction) => {
     if (colors.length === 0) return;
-    const [h, s, l] = hexToHsl(colors[0]);
-    setHue(h); setSaturation(s); setLightness(l);
-    setActiveSection("generator");
+    const hex = colors[0];
+    if (action === "palette") {
+      const [h, s, l] = hexToHsl(hex);
+      setHue(h); setSaturation(s); setLightness(l);
+    } else if (action === "analyzer") {
+      const [h, s, l] = hexToHsl(hex);
+      setAnalyzerHue1(h); setAnalyzerSat1(s); setAnalyzerLit1(l);
+      setColor1(hex);
+      setActiveSection("analyzer");
+    } else if (action === "mixer-a") {
+      setMixColor1(hex);
+    } else if (action === "mixer-b") {
+      setMixColor2(hex);
+    }
   };
 
   const navItems: { id: Section; label: string; icon: string }[] = [
@@ -532,7 +573,7 @@ export default function Index() {
               <Icon name="Palette" size={20} className="text-white" />
             </div>
             <div>
-              <h1 className="font-oswald text-xl font-semibold text-white tracking-wide">КОЛОРИСТ</h1>
+              <h1 className="font-oswald text-xl font-semibold text-white tracking-wide">ЦВЕТОВОЙ ПОМОЩНИК</h1>
               <p className="text-xs text-muted-foreground -mt-0.5">подбор цветов для продукта</p>
             </div>
           </div>
@@ -643,7 +684,7 @@ export default function Index() {
             </div>
 
             {/* Photo Extractor */}
-            <PhotoExtractor onApply={handlePhotoColors} />
+            <PhotoExtractor onApply={(colors, action) => handlePhotoColors(colors, action)} />
 
             {/* Color Mixer */}
             <div className="mt-6 glass rounded-3xl p-6">
@@ -1026,6 +1067,72 @@ export default function Index() {
                 </div>
               ))}
             </div>
+            {/* Palette Schemes Visual Guide */}
+            <div className="glass rounded-3xl p-6 mb-4">
+              <h3 className="font-oswald text-2xl font-bold text-white mb-2">Схемы цветовых палитр</h3>
+              <p className="text-muted-foreground text-sm mb-6">Как строятся разные типы палитр на цветовом круге</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {[
+                  {
+                    name: "Аналогичная",
+                    tag: "analogous",
+                    desc: "Соседние цвета на круге (±30°). Создают мягкую, гармоничную палитру. Идеальна для природных, спокойных тем.",
+                    colors: ["#7B2FBE", "#9B3ED4", "#B44FE8", "#CC6FF0", "#E090FF"],
+                    icon: "Waves",
+                    accent: "hsl(270,80%,55%)",
+                  },
+                  {
+                    name: "Комплементарная",
+                    tag: "complementary",
+                    desc: "Противоположные цвета (180° друг от друга). Высокий контраст, энергичность. Хорошо для акцентов и CTA.",
+                    colors: ["#2D6BE4", "#4A85F5", "#7AAAF8", "#F5882D", "#E46A2D"],
+                    icon: "ArrowLeftRight",
+                    accent: "hsl(215,80%,55%)",
+                  },
+                  {
+                    name: "Триадная",
+                    tag: "triadic",
+                    desc: "Три цвета на равном расстоянии (120°). Яркая и разнообразная палитра. Подходит для детских, игровых проектов.",
+                    colors: ["#E44B4B", "#4BE44B", "#4B4BE4", "#E4A44B", "#4BE4E4"],
+                    icon: "Triangle",
+                    accent: "hsl(0,70%,58%)",
+                  },
+                  {
+                    name: "Монохромная",
+                    tag: "monochromatic",
+                    desc: "Оттенки одного цвета — разная яркость и насыщенность. Элегантно и профессионально. Для минималистичных сайтов.",
+                    colors: ["#1A0A36", "#3D1A7A", "#6B35CC", "#9B6DE8", "#CCB5F5"],
+                    icon: "Minus",
+                    accent: "hsl(260,70%,55%)",
+                  },
+                ].map((scheme) => (
+                  <div key={scheme.tag} className="glass-bright rounded-2xl p-5">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: `linear-gradient(135deg, ${scheme.accent}, ${scheme.accent}88)` }}>
+                        <Icon name={scheme.icon} size={16} className="text-white" />
+                      </div>
+                      <h4 className="font-oswald text-lg font-bold text-white">{scheme.name}</h4>
+                    </div>
+                    <div className="flex rounded-xl overflow-hidden h-10 mb-3">
+                      {scheme.colors.map((c, i) => (
+                        <div key={i} className="flex-1 transition-all hover:flex-[2]" style={{ backgroundColor: c }} />
+                      ))}
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{scheme.desc}</p>
+                    <div className="flex gap-1.5 mt-3 flex-wrap">
+                      {scheme.colors.map((c, i) => (
+                        <span key={i} className="font-mono text-[10px] px-2 py-0.5 rounded-md"
+                          style={{ backgroundColor: `${c}30`, color: c, border: `1px solid ${c}50` }}>
+                          {c.toUpperCase()}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="glass rounded-3xl p-6">
               <h3 className="font-oswald text-2xl font-bold text-white mb-4">Тёплые и холодные цвета</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
