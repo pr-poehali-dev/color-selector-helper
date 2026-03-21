@@ -39,6 +39,35 @@ function getContrastRatio(hex1: string, hex2: string) {
   return (bright + 0.05) / (dark + 0.05);
 }
 
+function hexToHsl(hex: string): [number, number, number] {
+  let { r, g, b } = hexToRgb(hex);
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+}
+
+function mixColors(hex1: string, hex2: string, ratio: number): string {
+  const a = hexToRgb(hex1);
+  const b = hexToRgb(hex2);
+  const r = Math.round(a.r * (1 - ratio) + b.r * ratio);
+  const g = Math.round(a.g * (1 - ratio) + b.g * ratio);
+  const bv = Math.round(a.b * (1 - ratio) + b.b * ratio);
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${bv.toString(16).padStart(2, "0")}`;
+}
+
+function generateMixSteps(hex1: string, hex2: string, steps: number): string[] {
+  return Array.from({ length: steps }, (_, i) => mixColors(hex1, hex2, i / (steps - 1)));
+}
+
 function generatePalette(h: number, s: number, l: number, mode: string): string[] {
   if (mode === "analogous") {
     return [
@@ -300,6 +329,17 @@ export default function Index() {
   const [exportFormat, setExportFormat] = useState<"css" | "json" | "hex">("css");
   const [exportCopied, setExportCopied] = useState(false);
 
+  // Eyedropper
+  const [eyedropperSupported] = useState(() => "EyeDropper" in window);
+  const [eyedropperActive, setEyedropperActive] = useState(false);
+
+  // Mixer
+  const [mixColor1, setMixColor1] = useState("#9B59B6");
+  const [mixColor2, setMixColor2] = useState("#00D4AA");
+  const [mixRatio, setMixRatio] = useState(50);
+  const [mixSteps] = useState(7);
+  const [mixCopied, setMixCopied] = useState<string | null>(null);
+
   const palette = generatePalette(hue, saturation, lightness, paletteMode);
   const baseColor = hslToHex(hue, saturation, lightness);
 
@@ -329,6 +369,31 @@ export default function Index() {
     setExportCopied(true);
     setTimeout(() => setExportCopied(false), 2000);
   };
+
+  const activateEyedropper = async () => {
+    if (!eyedropperSupported) return;
+    setEyedropperActive(true);
+    try {
+      const eyeDropper = new (window as unknown as { EyeDropper: new () => { open: () => Promise<{ sRGBHex: string }> } }).EyeDropper();
+      const result = await eyeDropper.open();
+      const picked = result.sRGBHex as string;
+      const [h, s, l] = hexToHsl(picked);
+      setHue(h); setSaturation(s); setLightness(l);
+    } catch {
+      // user cancelled
+    } finally {
+      setEyedropperActive(false);
+    }
+  };
+
+  const copyMix = (hex: string) => {
+    navigator.clipboard.writeText(hex);
+    setMixCopied(hex);
+    setTimeout(() => setMixCopied(null), 1500);
+  };
+
+  const mixedResult = mixColors(mixColor1, mixColor2, mixRatio / 100);
+  const mixStepsColors = generateMixSteps(mixColor1, mixColor2, mixSteps);
 
   const navItems: { id: Section; label: string; icon: string }[] = [
     { id: "generator", label: "Генератор", icon: "Sparkles" },
@@ -388,8 +453,18 @@ export default function Index() {
               <div className="glass rounded-3xl p-6 space-y-5">
                 <div className="relative h-28 rounded-2xl overflow-hidden"
                   style={{ background: `linear-gradient(135deg, ${hslToHex(hue, saturation, Math.max(10, lightness - 20))}, ${baseColor}, ${hslToHex((hue + 30) % 360, saturation, lightness)})` }}>
-                  <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center justify-center gap-4">
                     <span className="font-oswald text-2xl font-bold text-white drop-shadow-lg tracking-widest">{baseColor.toUpperCase()}</span>
+                    {eyedropperSupported && (
+                      <button
+                        onClick={activateEyedropper}
+                        title="Захватить цвет с экрана"
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all backdrop-blur-sm
+                          ${eyedropperActive ? "bg-white/40 text-black scale-95" : "bg-black/30 text-white hover:bg-black/50"}`}>
+                        <Icon name="Pipette" size={13} />
+                        {eyedropperActive ? "Выберите цвет..." : "Пипетка"}
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -478,6 +553,127 @@ export default function Index() {
                       <div key={i} className="flex-1 transition-all hover:flex-[2]" style={{ backgroundColor: color }} />
                     ))}
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Color Mixer */}
+            <div className="mt-6 glass rounded-3xl p-6">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                  style={{ background: `linear-gradient(135deg, ${mixColor1}, ${mixColor2})` }}>
+                  <Icon name="Blend" size={18} className="text-white drop-shadow" />
+                </div>
+                <div>
+                  <h3 className="font-oswald text-xl font-bold text-white">Смешивание цветов</h3>
+                  <p className="text-xs text-muted-foreground">Перетащите слайдер чтобы смешать два цвета</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center mb-6">
+                {/* Color A */}
+                <div className="space-y-3">
+                  <div className="text-sm font-medium text-white mb-2">Цвет A</div>
+                  <div className="h-20 rounded-2xl flex items-center justify-center relative overflow-hidden cursor-pointer"
+                    style={{ backgroundColor: mixColor1 }}>
+                    <span className="font-mono text-xs font-bold drop-shadow"
+                      style={{ color: getLuminance(mixColor1) > 0.4 ? "#000" : "#fff" }}>
+                      {mixColor1.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <input type="color" value={mixColor1} onChange={(e) => setMixColor1(e.target.value)}
+                      className="w-10 h-9 rounded-lg border border-white/10 cursor-pointer bg-transparent flex-shrink-0" />
+                    <input type="text" value={mixColor1} onChange={(e) => setMixColor1(e.target.value)}
+                      className="flex-1 glass rounded-xl px-3 text-xs font-mono text-white border border-white/10 bg-transparent outline-none focus:border-white/30 min-w-0" />
+                    {eyedropperSupported && (
+                      <button onClick={async () => {
+                        try {
+                          const ed = new (window as unknown as { EyeDropper: new () => { open: () => Promise<{ sRGBHex: string }> } }).EyeDropper();
+                          const r = await ed.open(); setMixColor1(r.sRGBHex);
+                        } catch {}
+                      }} title="Пипетка" className="glass px-2 rounded-xl text-muted-foreground hover:text-white transition-colors">
+                        <Icon name="Pipette" size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Mix result + slider */}
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-24 h-24 rounded-full shadow-2xl color-swatch"
+                    style={{ backgroundColor: mixedResult, boxShadow: `0 0 30px ${mixedResult}80` }} />
+                  <div className="text-center">
+                    <div className="font-mono text-white font-bold text-sm">{mixedResult.toUpperCase()}</div>
+                    <div className="text-xs text-muted-foreground">{mixRatio}% / {100 - mixRatio}%</div>
+                  </div>
+                  <button onClick={() => copyMix(mixedResult)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white transition-all"
+                    style={{ background: "linear-gradient(135deg, hsl(270,80%,45%), hsl(195,100%,40%))" }}>
+                    <Icon name={mixCopied === mixedResult ? "Check" : "Copy"} size={12} />
+                    {mixCopied === mixedResult ? "Скопировано" : "Копировать"}
+                  </button>
+                </div>
+
+                {/* Color B */}
+                <div className="space-y-3">
+                  <div className="text-sm font-medium text-white mb-2">Цвет B</div>
+                  <div className="h-20 rounded-2xl flex items-center justify-center relative overflow-hidden cursor-pointer"
+                    style={{ backgroundColor: mixColor2 }}>
+                    <span className="font-mono text-xs font-bold drop-shadow"
+                      style={{ color: getLuminance(mixColor2) > 0.4 ? "#000" : "#fff" }}>
+                      {mixColor2.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <input type="color" value={mixColor2} onChange={(e) => setMixColor2(e.target.value)}
+                      className="w-10 h-9 rounded-lg border border-white/10 cursor-pointer bg-transparent flex-shrink-0" />
+                    <input type="text" value={mixColor2} onChange={(e) => setMixColor2(e.target.value)}
+                      className="flex-1 glass rounded-xl px-3 text-xs font-mono text-white border border-white/10 bg-transparent outline-none focus:border-white/30 min-w-0" />
+                    {eyedropperSupported && (
+                      <button onClick={async () => {
+                        try {
+                          const ed = new (window as unknown as { EyeDropper: new () => { open: () => Promise<{ sRGBHex: string }> } }).EyeDropper();
+                          const r = await ed.open(); setMixColor2(r.sRGBHex);
+                        } catch {}
+                      }} title="Пипетка" className="glass px-2 rounded-xl text-muted-foreground hover:text-white transition-colors">
+                        <Icon name="Pipette" size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Ratio slider */}
+              <div className="mb-5">
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm text-white">Соотношение смешивания</span>
+                  <span className="text-sm font-mono text-muted-foreground">A {mixRatio}% — B {100 - mixRatio}%</span>
+                </div>
+                <div className="relative h-5">
+                  <div className="h-5 rounded-full absolute inset-0"
+                    style={{ background: `linear-gradient(to right, ${mixColor1}, ${mixColor2})` }} />
+                  <input type="range" min={0} max={100} value={mixRatio}
+                    onChange={(e) => setMixRatio(Number(e.target.value))}
+                    className="w-full absolute inset-0 opacity-0 h-5 cursor-pointer" />
+                  <div className="w-6 h-6 rounded-full border-3 border-white shadow-xl absolute top-[-2px] pointer-events-none transition-all"
+                    style={{ left: `calc(${mixRatio}% - 12px)`, backgroundColor: mixedResult, borderWidth: 3 }} />
+                </div>
+              </div>
+
+              {/* Gradient steps */}
+              <div>
+                <div className="text-sm font-medium text-white mb-3">Градиент из {mixSteps} шагов</div>
+                <div className="flex gap-2">
+                  {mixStepsColors.map((c, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5 cursor-pointer group"
+                      onClick={() => copyMix(c)}>
+                      <div className="w-full rounded-xl transition-all group-hover:scale-105 group-hover:shadow-lg"
+                        style={{ height: 48, backgroundColor: c, boxShadow: mixCopied === c ? `0 0 12px ${c}` : undefined }} />
+                      <span className="font-mono text-[9px] text-muted-foreground hidden md:block">{c.toUpperCase()}</span>
+                      {mixCopied === c && <Icon name="Check" size={10} className="text-green-400" />}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
