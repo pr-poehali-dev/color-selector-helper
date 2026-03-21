@@ -589,53 +589,72 @@ export default function Index() {
 
   return (
     <div className="min-h-screen mesh-bg relative overflow-hidden">
+      {/* Decorative orbs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-5%] w-[500px] h-[500px] rounded-full opacity-20 animate-float"
-          style={{ background: "radial-gradient(circle, hsl(270,80%,65%), transparent 70%)" }} />
-        <div className="absolute bottom-[-10%] right-[-5%] w-[400px] h-[400px] rounded-full opacity-15 animate-float"
-          style={{ background: "radial-gradient(circle, hsl(195,100%,55%), transparent 70%)", animationDelay: "2s" }} />
-        <div className="absolute top-[40%] right-[20%] w-[300px] h-[300px] rounded-full opacity-10 animate-float"
-          style={{ background: "radial-gradient(circle, hsl(320,90%,65%), transparent 70%)", animationDelay: "1s" }} />
+        <div className="absolute top-[-8%] left-[-4%] w-[560px] h-[560px] rounded-full opacity-[0.18] animate-float"
+          style={{ background: "radial-gradient(circle, hsl(268,85%,68%), transparent 65%)" }} />
+        <div className="absolute bottom-[-8%] right-[-4%] w-[460px] h-[460px] rounded-full opacity-[0.13] animate-float"
+          style={{ background: "radial-gradient(circle, hsl(192,100%,58%), transparent 65%)", animationDelay: "2.2s" }} />
+        <div className="absolute top-[38%] right-[18%] w-[340px] h-[340px] rounded-full opacity-[0.09] animate-float-reverse"
+          style={{ background: "radial-gradient(circle, hsl(322,92%,66%), transparent 65%)", animationDelay: "1s" }} />
+        <div className="absolute top-[60%] left-[10%] w-[220px] h-[220px] rounded-full opacity-[0.07] animate-float"
+          style={{ background: "radial-gradient(circle, hsl(148,72%,52%), transparent 65%)", animationDelay: "3s" }} />
       </div>
 
-      <header className="relative z-20 py-5 px-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, hsl(270,80%,65%), hsl(195,100%,55%))" }}>
-              <Icon name="Palette" size={20} className="text-white" />
+      <header className="relative z-20 py-4 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="glass-card rounded-2xl px-4 py-3 flex items-center justify-between gap-4">
+            {/* Logo */}
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center relative"
+                style={{ background: "linear-gradient(135deg, hsl(268,85%,68%), hsl(192,100%,58%))" }}>
+                <Icon name="Palette" size={18} className="text-white" />
+                <div className="absolute inset-0 rounded-xl animate-pulse-glow"
+                  style={{ background: "linear-gradient(135deg, hsl(268,85%,68%), hsl(192,100%,58%))", opacity: 0.4 }} />
+              </div>
+              <div>
+                <h1 className="font-oswald text-lg font-bold text-white tracking-widest leading-none">ЦВЕТОВОЙ ПОМОЩНИК</h1>
+                <p className="text-[10px] text-muted-foreground tracking-wider uppercase mt-0.5">подбор палитр для продукта</p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-oswald text-xl font-semibold text-white tracking-wide">ЦВЕТОВОЙ ПОМОЩНИК</h1>
-              <p className="text-xs text-muted-foreground -mt-0.5">подбор цветов для продукта</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 glass rounded-2xl p-1.5 overflow-x-auto">
-            {navItems.map((item) => (
-              <button key={item.id} onClick={() => setActiveSection(item.id)}
-                className={`nav-pill flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all
-                  ${activeSection === item.id ? "bg-white/10 text-white" : "text-muted-foreground hover:text-white hover:bg-white/5"}`}>
-                <Icon name={item.icon} size={14} />
-                <span className="hidden sm:inline">{item.label}</span>
-              </button>
-            ))}
+            {/* Nav */}
+            <nav className="flex items-center gap-0.5 overflow-x-auto">
+              {navItems.map((item) => (
+                <button key={item.id} onClick={() => setActiveSection(item.id)}
+                  className={`nav-pill relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium whitespace-nowrap
+                    ${activeSection === item.id
+                      ? "nav-pill-active"
+                      : "text-muted-foreground hover:text-white hover:bg-white/5"
+                    }`}>
+                  <Icon name={item.icon} size={14} />
+                  <span className="hidden sm:inline">{item.label}</span>
+                </button>
+              ))}
+            </nav>
           </div>
         </div>
       </header>
 
-      <main className="relative z-10 max-w-6xl mx-auto px-6 pb-16">
+      <main className="relative z-10 max-w-6xl mx-auto px-6 pb-16 pt-2">
 
         {/* ── GENERATOR ── */}
         {activeSection === "generator" && (
           <div className="animate-slide-up">
-            <div className="mb-8">
-              <h2 className="font-oswald text-4xl font-bold gradient-text mb-2">Генератор палитр</h2>
-              <p className="text-muted-foreground">Настройте базовый цвет и выберите схему — палитра создастся автоматически</p>
+            <div className="mb-8 pt-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, hsl(268,85%,68%), hsl(192,100%,58%))" }}>
+                  <Icon name="Sparkles" size={18} className="text-white" />
+                </div>
+                <h2 className="font-oswald text-4xl font-bold gradient-text">Генератор палитр</h2>
+              </div>
+              <p className="text-muted-foreground pl-[52px]">Настройте базовый цвет и выберите схему — палитра создастся автоматически</p>
+              <div className="gradient-divider mt-5" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Left: sliders */}
-              <div className="glass rounded-3xl p-6 space-y-5">
+              <div className="glass-card rounded-3xl p-6 space-y-5">
                 <div className="relative h-28 rounded-2xl overflow-hidden"
                   style={{ background: `linear-gradient(135deg, ${hslToHex(hue, saturation, Math.max(10, lightness - 20))}, ${baseColor}, ${hslToHex((hue + 30) % 360, saturation, lightness)})` }}>
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -674,8 +693,8 @@ export default function Index() {
                       { key: "monochromatic", label: "Монохромная" },
                     ].map(({ key, label }) => (
                       <button key={key} onClick={() => setPaletteMode(key)}
-                        className={`py-2 px-3 rounded-xl text-sm font-medium transition-all ${paletteMode === key ? "text-white" : "glass text-muted-foreground hover:text-white hover:bg-white/10"}`}
-                        style={paletteMode === key ? { background: "linear-gradient(135deg, hsl(270,80%,45%), hsl(195,100%,40%))" } : {}}>
+                        className={`py-2 px-3 rounded-xl text-sm font-medium transition-all ${paletteMode === key ? "text-white shadow-lg" : "glass text-muted-foreground hover:text-white hover:bg-white/8"}`}
+                        style={paletteMode === key ? { background: "linear-gradient(135deg, hsl(268,85%,50%), hsl(192,100%,42%))", boxShadow: "0 4px 16px rgba(140,70,230,0.4)" } : {}}>
                         {label}
                       </button>
                     ))}
@@ -685,32 +704,33 @@ export default function Index() {
 
               {/* Right: wheel + palette */}
               <div className="space-y-4">
-                <div className="glass rounded-3xl p-6 flex flex-col items-center">
-                  <h3 className="font-oswald text-lg font-semibold text-white mb-4 self-start">Цветовой круг</h3>
+                <div className="glass-card rounded-3xl p-6 flex flex-col items-center">
+                  <h3 className="font-oswald text-lg font-bold text-white mb-4 self-start tracking-wide">Цветовой круг</h3>
                   <ColorWheel hue={hue} saturation={saturation} lightness={lightness} onSelect={(h) => setHue(h)} />
                 </div>
-                <div className="glass rounded-3xl p-6">
-                  <h3 className="font-oswald text-lg font-semibold text-white mb-4">Ваша палитра</h3>
-                  <div className="space-y-3">
+                <div className="glass-card rounded-3xl p-6">
+                  <h3 className="font-oswald text-lg font-bold text-white mb-4 tracking-wide">Ваша палитра</h3>
+                  <div className="space-y-2.5">
                     {palette.map((color, i) => (
-                      <div key={i} className="flex items-center gap-4 glass-bright rounded-2xl p-3 cursor-pointer hover:bg-white/10 transition-all group"
+                      <div key={i} className="flex items-center gap-3 glass-bright rounded-2xl p-3 cursor-pointer hover:bg-white/10 transition-all group"
                         onClick={() => copyColor(color)}>
-                        <div className="w-14 h-14 rounded-xl color-swatch flex-shrink-0 shadow-lg" style={{ backgroundColor: color }} />
-                        <div className="flex-1">
-                          <div className="font-mono text-white font-semibold">{color.toUpperCase()}</div>
+                        <div className="w-12 h-12 rounded-xl color-swatch flex-shrink-0"
+                          style={{ backgroundColor: color, boxShadow: `0 4px 14px ${color}60` }} />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-mono text-white font-semibold text-sm">{color.toUpperCase()}</div>
                           <div className="text-xs text-muted-foreground mt-0.5">{["Основной", "Светлый", "Акцент", "Тёмный", "Дополнительный"][i]}</div>
                         </div>
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          {copiedColor === color ? <Icon name="Check" size={16} className="text-green-400" /> : <Icon name="Copy" size={16} className="text-muted-foreground" />}
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                          {copiedColor === color ? <Icon name="Check" size={15} className="text-green-400" /> : <Icon name="Copy" size={15} className="text-muted-foreground" />}
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div className="glass rounded-3xl p-4">
-                  <h3 className="font-oswald text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Превью</h3>
-                  <div className="flex rounded-2xl overflow-hidden h-16">
-                    {palette.map((color, i) => <div key={i} className="flex-1 transition-all hover:flex-[2]" style={{ backgroundColor: color }} />)}
+                <div className="glass-card rounded-3xl p-4">
+                  <h3 className="font-oswald text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-widest">Превью палитры</h3>
+                  <div className="flex rounded-2xl overflow-hidden h-14">
+                    {palette.map((color, i) => <div key={i} className="flex-1 transition-all duration-300 hover:flex-[2.5]" style={{ backgroundColor: color }} />)}
                   </div>
                 </div>
               </div>
@@ -815,9 +835,16 @@ export default function Index() {
         {/* ── ANALYZER ── */}
         {activeSection === "analyzer" && (
           <div className="animate-slide-up">
-            <div className="mb-8">
-              <h2 className="font-oswald text-4xl font-bold gradient-text mb-2">Анализатор контраста</h2>
-              <p className="text-muted-foreground">Проверьте совместимость двух цветов и их читаемость по стандарту WCAG</p>
+            <div className="mb-8 pt-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, hsl(192,100%,58%), hsl(148,72%,52%))" }}>
+                  <Icon name="ScanEye" size={18} className="text-white" />
+                </div>
+                <h2 className="font-oswald text-4xl font-bold gradient-text">Анализатор контраста</h2>
+              </div>
+              <p className="text-muted-foreground pl-[52px]">Проверьте совместимость двух цветов и их читаемость по стандарту WCAG</p>
+              <div className="gradient-divider mt-5" />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               <div className="glass rounded-3xl p-6 space-y-4">
@@ -907,27 +934,47 @@ export default function Index() {
         {/* ── GALLERY ── */}
         {activeSection === "gallery" && (
           <div className="animate-slide-up">
-            <div className="mb-8">
-              <h2 className="font-oswald text-4xl font-bold gradient-text mb-2">Галерея палитр</h2>
-              <p className="text-muted-foreground">Готовые цветовые схемы для разных стилей — нажмите, чтобы скопировать цвета</p>
+            <div className="mb-8 pt-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, hsl(322,92%,66%), hsl(28,100%,62%))" }}>
+                  <Icon name="LayoutGrid" size={18} className="text-white" />
+                </div>
+                <h2 className="font-oswald text-4xl font-bold gradient-text-warm">Галерея палитр</h2>
+              </div>
+              <p className="text-muted-foreground pl-[52px]">Готовые цветовые схемы для разных стилей — нажмите, чтобы скопировать цвета</p>
+              <div className="gradient-divider mt-5" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {GALLERY_PALETTES.map((item, i) => (
                 <div key={i}
-                  className={`glass rounded-3xl p-4 cursor-pointer card-hover ${selectedGallery === i ? "ring-2 ring-white/30" : ""}`}
+                  className={`glass-card rounded-3xl p-4 cursor-pointer card-hover transition-all ${selectedGallery === i ? "ring-1 ring-white/20 glow-purple" : ""}`}
                   onClick={() => setSelectedGallery(selectedGallery === i ? null : i)}>
-                  <div className="flex rounded-2xl overflow-hidden h-24 mb-3">
-                    {item.colors.map((c, j) => <div key={j} className="flex-1" style={{ backgroundColor: c }} />)}
+                  <div className="relative flex rounded-2xl overflow-hidden h-20 mb-3">
+                    {item.colors.map((c, j) => <div key={j} className="flex-1 transition-all duration-300 hover:flex-[2]" style={{ backgroundColor: c }} />)}
+                    {selectedGallery === i && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-2xl">
+                        <Icon name="Check" size={20} className="text-white drop-shadow" />
+                      </div>
+                    )}
                   </div>
-                  <div className="font-semibold text-white text-sm mb-1">{item.name}</div>
-                  <div className="text-xs text-muted-foreground">{item.mood}</div>
+                  <div className="font-oswald font-bold text-white text-base mb-0.5 tracking-wide">{item.name}</div>
+                  <div className="text-xs text-muted-foreground mb-2">{item.mood}</div>
+                  <div className="flex gap-1">
+                    {item.colors.map((c, j) => (
+                      <div key={j} className="flex-1 h-1.5 rounded-full" style={{ backgroundColor: c }} />
+                    ))}
+                  </div>
                   {selectedGallery === i && (
-                    <div className="mt-3 space-y-1.5 animate-fade-in">
+                    <div className="mt-3 space-y-1.5 animate-slide-up">
                       {item.colors.map((c, j) => (
-                        <div key={j} className="flex items-center gap-2 cursor-pointer" onClick={(e) => { e.stopPropagation(); copyColor(c); }}>
-                          <div className="w-5 h-5 rounded-md" style={{ backgroundColor: c }} />
-                          <span className="font-mono text-xs text-muted-foreground">{c.toUpperCase()}</span>
-                          {copiedColor === c && <Icon name="Check" size={12} className="text-green-400" />}
+                        <div key={j} className="flex items-center gap-2 cursor-pointer group/c hover:bg-white/5 rounded-lg px-1.5 py-1 transition-all"
+                          onClick={(e) => { e.stopPropagation(); copyColor(c); }}>
+                          <div className="w-4 h-4 rounded-md flex-shrink-0" style={{ backgroundColor: c }} />
+                          <span className="font-mono text-xs text-muted-foreground group-hover/c:text-white transition-colors">{c.toUpperCase()}</span>
+                          {copiedColor === c
+                            ? <Icon name="Check" size={11} className="text-green-400 ml-auto" />
+                            : <Icon name="Copy" size={11} className="text-muted-foreground ml-auto opacity-0 group-hover/c:opacity-100 transition-opacity" />}
                         </div>
                       ))}
                     </div>
@@ -941,9 +988,16 @@ export default function Index() {
         {/* ── EXPORT ── */}
         {activeSection === "export" && (
           <div className="animate-slide-up">
-            <div className="mb-8">
-              <h2 className="font-oswald text-4xl font-bold gradient-text mb-2">Экспорт палитры</h2>
-              <p className="text-muted-foreground">Сохраните текущую палитру в нужном формате — код или красивое PNG-изображение</p>
+            <div className="mb-8 pt-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, hsl(28,100%,62%), hsl(48,100%,60%))" }}>
+                  <Icon name="Download" size={18} className="text-white" />
+                </div>
+                <h2 className="font-oswald text-4xl font-bold gradient-text-warm">Экспорт палитры</h2>
+              </div>
+              <p className="text-muted-foreground pl-[52px]">Сохраните текущую палитру в нужном формате — код или красивое PNG-изображение</p>
+              <div className="gradient-divider mt-5" />
             </div>
 
             <div className="glass rounded-3xl p-6 mb-6">
@@ -1027,9 +1081,16 @@ export default function Index() {
         {/* ── TESTS ── */}
         {activeSection === "tests" && (
           <div className="animate-slide-up">
-            <div className="mb-8">
-              <h2 className="font-oswald text-4xl font-bold gradient-text mb-2">Тесты доступности</h2>
-              <p className="text-muted-foreground">Проверьте вашу палитру по критериям WCAG 2.1 для инклюзивного дизайна</p>
+            <div className="mb-8 pt-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, hsl(148,72%,52%), hsl(192,100%,58%))" }}>
+                  <Icon name="ShieldCheck" size={18} className="text-white" />
+                </div>
+                <h2 className="font-oswald text-4xl font-bold gradient-text">Тесты доступности</h2>
+              </div>
+              <p className="text-muted-foreground pl-[52px]">Проверьте вашу палитру по критериям WCAG 2.1 для инклюзивного дизайна</p>
+              <div className="gradient-divider mt-5" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               {palette.map((bgColor, i) => {
@@ -1066,25 +1127,33 @@ export default function Index() {
         {/* ── THEORY ── */}
         {activeSection === "theory" && (
           <div className="animate-slide-up">
-            <div className="mb-8">
-              <h2 className="font-oswald text-4xl font-bold gradient-text mb-2">Теория цвета</h2>
-              <p className="text-muted-foreground">Основы цветоведения для создания гармоничных дизайнов</p>
+            <div className="mb-8 pt-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, hsl(268,85%,68%), hsl(322,92%,66%))" }}>
+                  <Icon name="BookOpen" size={18} className="text-white" />
+                </div>
+                <h2 className="font-oswald text-4xl font-bold gradient-text">Теория цвета</h2>
+              </div>
+              <p className="text-muted-foreground pl-[52px]">Основы цветоведения для создания гармоничных дизайнов</p>
+              <div className="gradient-divider mt-5" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               {THEORY_TOPICS.map((topic, i) => (
-                <div key={i} className="glass rounded-3xl p-6 card-hover">
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4"
-                    style={{ background: `linear-gradient(135deg, hsl(${(i * 60) % 360}, 70%, 50%), hsl(${(i * 60 + 40) % 360}, 70%, 50%))` }}>
-                    <Icon name={topic.icon} size={22} className="text-white" />
+                <div key={i} className="glass-card rounded-3xl p-6 card-hover animate-slide-up"
+                  style={{ animationDelay: `${i * 0.07}s` }}>
+                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-4"
+                    style={{ background: `linear-gradient(135deg, hsl(${(i * 55 + 260) % 360}, 75%, 55%), hsl(${(i * 55 + 300) % 360}, 75%, 55%))` }}>
+                    <Icon name={topic.icon} size={20} className="text-white" />
                   </div>
-                  <h3 className="font-oswald text-lg font-bold text-white mb-2">{topic.title}</h3>
+                  <h3 className="font-oswald text-lg font-bold text-white mb-2 tracking-wide">{topic.title}</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">{topic.desc}</p>
                 </div>
               ))}
             </div>
             {/* Palette Schemes Visual Guide */}
-            <div className="glass rounded-3xl p-6 mb-4">
-              <h3 className="font-oswald text-2xl font-bold text-white mb-2">Схемы цветовых палитр</h3>
+            <div className="glass-card rounded-3xl p-6 mb-4">
+              <h3 className="font-oswald text-2xl font-bold text-white mb-1">Схемы цветовых палитр</h3>
               <p className="text-muted-foreground text-sm mb-6">Как строятся разные типы палитр на цветовом круге</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {[
@@ -1149,7 +1218,7 @@ export default function Index() {
             </div>
 
             {/* WCAG 2.1 Block */}
-            <div className="glass rounded-3xl p-6 mb-4">
+            <div className="glass-card rounded-3xl p-6 mb-4">
               <div className="flex items-start gap-4 mb-5">
                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
                   style={{ background: "linear-gradient(135deg, #2563eb, #7c3aed)" }}>
@@ -1220,18 +1289,29 @@ export default function Index() {
               </div>
             </div>
 
-            <div className="glass rounded-3xl p-6">
-              <h3 className="font-oswald text-2xl font-bold text-white mb-4">Тёплые и холодные цвета</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <div className="h-16 rounded-2xl mb-3" style={{ background: "linear-gradient(to right, #FF4500, #FF6B35, #FF8C00, #FFA500, #FFD700)" }} />
-                  <h4 className="font-semibold text-white mb-2">Тёплые цвета</h4>
-                  <p className="text-sm text-muted-foreground">Красные, оранжевые и жёлтые оттенки. Создают ощущение энергии, тепла и близости. Отлично для призывов к действию.</p>
+            <div className="glass-card rounded-3xl p-6">
+              <h3 className="font-oswald text-2xl font-bold text-white mb-1">Тёплые и холодные цвета</h3>
+              <p className="text-muted-foreground text-sm mb-5">Как температура цвета влияет на восприятие</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="glass-bright rounded-2xl p-4">
+                  <div className="h-14 rounded-xl mb-4 relative overflow-hidden"
+                    style={{ background: "linear-gradient(to right, #FF4500, #FF6B35, #FF8C00, #FFA500, #FFD700)" }}>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-xs font-semibold text-white/80 drop-shadow tracking-widest uppercase">Warm</span>
+                    </div>
+                  </div>
+                  <h4 className="font-oswald font-bold text-white mb-1.5 tracking-wide">Тёплые цвета</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">Красные, оранжевые и жёлтые оттенки. Создают ощущение энергии, тепла и близости. Отлично для призывов к действию.</p>
                 </div>
-                <div>
-                  <div className="h-16 rounded-2xl mb-3" style={{ background: "linear-gradient(to right, #0000CD, #4169E1, #1E90FF, #00BFFF, #00CED1)" }} />
-                  <h4 className="font-semibold text-white mb-2">Холодные цвета</h4>
-                  <p className="text-sm text-muted-foreground">Синие, зелёные и фиолетовые оттенки. Ассоциируются с покоем, профессионализмом и надёжностью. Идеальны для корпоративных сайтов.</p>
+                <div className="glass-bright rounded-2xl p-4">
+                  <div className="h-14 rounded-xl mb-4 relative overflow-hidden"
+                    style={{ background: "linear-gradient(to right, #0000CD, #4169E1, #1E90FF, #00BFFF, #00CED1)" }}>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-xs font-semibold text-white/80 drop-shadow tracking-widest uppercase">Cool</span>
+                    </div>
+                  </div>
+                  <h4 className="font-oswald font-bold text-white mb-1.5 tracking-wide">Холодные цвета</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">Синие, зелёные и фиолетовые оттенки. Ассоциируются с покоем, профессионализмом и надёжностью. Идеальны для корпоративных сайтов.</p>
                 </div>
               </div>
             </div>
