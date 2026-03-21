@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 
 type Section = "generator" | "analyzer" | "gallery" | "export" | "tests" | "theory";
@@ -95,6 +95,191 @@ const THEORY_TOPICS = [
   { icon: "Activity", title: "Контрастность и доступность", desc: "WCAG 2.1 требует контраст 4.5:1 для обычного текста и 3:1 для крупного. Это важно для пользователей с нарушениями зрения." },
   { icon: "Wand2", title: "60-30-10 Правило", desc: "Доминирующий цвет занимает 60%, вторичный — 30%, акцентный — 10%. Это создаёт визуальный баланс и гармонию в дизайне." },
 ];
+
+function ColorWheel({ hue, saturation, lightness, onSelect }: {
+  hue: number; saturation: number; lightness: number;
+  onSelect: (h: number, s: number, l: number) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const size = 240;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size / 2 - 8;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+    ctx.clearRect(0, 0, size, size);
+
+    // Draw wheel ring
+    for (let deg = 0; deg < 360; deg++) {
+      const startAngle = (deg - 1) * Math.PI / 180;
+      const endAngle = (deg + 1) * Math.PI / 180;
+      const gradient = ctx.createRadialGradient(cx, cy, r * 0.42, cx, cy, r);
+      gradient.addColorStop(0, `hsla(${deg}, 10%, ${lightness}%, 0.15)`);
+      gradient.addColorStop(1, `hsl(${deg}, ${saturation}%, ${lightness}%)`);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    }
+
+    // Center inner circle with base color
+    const innerR = r * 0.4;
+    const centerGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, innerR);
+    centerGrad.addColorStop(0, `hsl(${hue}, ${saturation}%, ${Math.min(lightness + 10, 95)}%)`);
+    centerGrad.addColorStop(1, `hsl(${hue}, ${saturation}%, ${lightness}%)`);
+    ctx.beginPath();
+    ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+    ctx.fillStyle = centerGrad;
+    ctx.fill();
+
+    // Center hex label
+    ctx.fillStyle = lightness > 55 ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.9)";
+    ctx.font = "bold 11px monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // Cursor dot on wheel
+    const angle = (hue - 90) * Math.PI / 180;
+    const dotR = r * 0.72;
+    const dx = cx + dotR * Math.cos(angle);
+    const dy = cy + dotR * Math.sin(angle);
+    ctx.beginPath();
+    ctx.arc(dx, dy, 9, 0, Math.PI * 2);
+    ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    ctx.fill();
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }, [hue, saturation, lightness]);
+
+  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left - cx;
+    const y = e.clientY - rect.top - cy;
+    const dist = Math.sqrt(x * x + y * y);
+    if (dist < r * 0.38 || dist > r + 8) return;
+    let angle = Math.atan2(y, x) * 180 / Math.PI + 90;
+    if (angle < 0) angle += 360;
+    onSelect(Math.round(angle) % 360, saturation, lightness);
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <canvas
+        ref={canvasRef}
+        width={size}
+        height={size}
+        onClick={handleClick}
+        className="cursor-crosshair rounded-full"
+        style={{ filter: "drop-shadow(0 0 20px rgba(150,80,230,0.4))" }}
+      />
+      <div className="text-xs text-muted-foreground">Кликните на круг чтобы выбрать оттенок</div>
+    </div>
+  );
+}
+
+function exportPaletteAsPng(palette: string[], paletteMode: string) {
+  const W = 900;
+  const H = 420;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+
+  // Background
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, "#0d0a1a");
+  bg.addColorStop(0.5, "#0f1520");
+  bg.addColorStop(1, "#0a1015");
+  ctx.fillStyle = bg;
+  ctx.roundRect(0, 0, W, H, 24);
+  ctx.fill();
+
+  // Title
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.font = "bold 28px sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("🎨  Цветовая палитра", 40, 56);
+
+  const modeName: Record<string, string> = {
+    analogous: "Аналогичная", complementary: "Комплементарная",
+    triadic: "Триадная", monochromatic: "Монохромная"
+  };
+  ctx.fillStyle = "rgba(255,255,255,0.4)";
+  ctx.font = "16px sans-serif";
+  ctx.fillText(`Схема: ${modeName[paletteMode] ?? paletteMode}`, 40, 82);
+
+  // Color blocks
+  const blockW = (W - 80 - (palette.length - 1) * 12) / palette.length;
+  const blockH = 180;
+  const blockY = 110;
+
+  palette.forEach((color, i) => {
+    const x = 40 + i * (blockW + 12);
+
+    // Shadow
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 24;
+    ctx.fillStyle = color;
+    ctx.roundRect(x, blockY, blockW, blockH, 16);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Hex label inside block
+    const r2 = parseInt(color.slice(1, 3), 16);
+    const g2 = parseInt(color.slice(3, 5), 16);
+    const b2 = parseInt(color.slice(5, 7), 16);
+    const lum = 0.299 * r2 + 0.587 * g2 + 0.114 * b2;
+    ctx.fillStyle = lum > 140 ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.9)";
+    ctx.font = "bold 13px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(color.toUpperCase(), x + blockW / 2, blockY + blockH - 18);
+
+    // Role label below
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.font = "13px sans-serif";
+    const roles = ["Основной", "Светлый", "Акцент", "Тёмный", "Доп."];
+    ctx.fillText(roles[i] ?? "", x + blockW / 2, blockY + blockH + 28);
+
+    // Color swatch strip row below role
+    ctx.fillStyle = color;
+    ctx.roundRect(x, blockY + blockH + 42, blockW, 14, 7);
+    ctx.fill();
+  });
+
+  // Strip bar at bottom
+  const stripY = H - 52;
+  palette.forEach((color, i) => {
+    const x = 40 + i * ((W - 80) / palette.length);
+    const sw = (W - 80) / palette.length;
+    ctx.fillStyle = color;
+    if (i === 0) {
+      ctx.roundRect(x, stripY, sw, 20, [10, 0, 0, 10]);
+    } else if (i === palette.length - 1) {
+      ctx.roundRect(x, stripY, sw, 20, [0, 10, 10, 0]);
+    } else {
+      ctx.fillRect(x, stripY, sw, 20);
+    }
+    ctx.fill();
+  });
+
+  ctx.fillStyle = "rgba(255,255,255,0.18)";
+  ctx.font = "12px sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText("kolоrist.app", W - 40, H - 18);
+
+  const link = document.createElement("a");
+  link.download = "palette.png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
 
 export default function Index() {
   const [activeSection, setActiveSection] = useState<Section>("generator");
@@ -255,6 +440,15 @@ export default function Index() {
               </div>
 
               <div className="space-y-4">
+                <div className="glass rounded-3xl p-6 flex flex-col items-center">
+                  <h3 className="font-oswald text-lg font-semibold text-white mb-4 self-start">Цветовой круг</h3>
+                  <ColorWheel
+                    hue={hue}
+                    saturation={saturation}
+                    lightness={lightness}
+                    onSelect={(h) => setHue(h)}
+                  />
+                </div>
                 <div className="glass rounded-3xl p-6">
                   <h3 className="font-oswald text-lg font-semibold text-white mb-4">Ваша палитра</h3>
                   <div className="space-y-3">
@@ -419,8 +613,48 @@ export default function Index() {
           <div className="animate-slide-up">
             <div className="mb-8">
               <h2 className="font-oswald text-4xl font-bold gradient-text mb-2">Экспорт палитры</h2>
-              <p className="text-muted-foreground">Сохраните текущую палитру из генератора в нужном формате</p>
+              <p className="text-muted-foreground">Сохраните текущую палитру в нужном формате — код или красивое PNG-изображение</p>
             </div>
+
+            {/* PNG export card */}
+            <div className="glass rounded-3xl p-6 mb-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-oswald text-xl font-bold text-white mb-1">Скачать как изображение</h3>
+                  <p className="text-sm text-muted-foreground">Красивая карточка палитры в формате PNG — для презентаций, портфолио и Figma</p>
+                </div>
+                <button
+                  onClick={() => exportPaletteAsPng(palette, paletteMode)}
+                  className="flex items-center gap-3 px-6 py-3 rounded-2xl text-white font-semibold text-sm whitespace-nowrap transition-all hover:scale-105 active:scale-95"
+                  style={{ background: "linear-gradient(135deg, hsl(320,90%,55%), hsl(270,80%,50%), hsl(195,100%,45%))" }}>
+                  <Icon name="ImageDown" size={18} />
+                  Скачать PNG
+                </button>
+              </div>
+
+              {/* Preview of PNG card */}
+              <div className="mt-5 rounded-2xl overflow-hidden border border-white/10"
+                style={{ background: "linear-gradient(135deg, #0d0a1a, #0f1520, #0a1015)" }}>
+                <div className="p-5">
+                  <div className="text-white font-bold text-base mb-1">🎨  Цветовая палитра</div>
+                  <div className="text-xs text-white/40 mb-4">
+                    Схема: {{ analogous: "Аналогичная", complementary: "Комплементарная", triadic: "Триадная", monochromatic: "Монохромная" }[paletteMode]}
+                  </div>
+                  <div className="flex gap-2 mb-3">
+                    {palette.map((c, i) => (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                        <div className="w-full rounded-xl" style={{ height: 64, backgroundColor: c, boxShadow: `0 4px 20px ${c}55` }} />
+                        <span className="font-mono text-[9px] text-white/50">{c.toUpperCase()}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex rounded-lg overflow-hidden h-3">
+                    {palette.map((c, i) => <div key={i} className="flex-1" style={{ backgroundColor: c }} />)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="glass rounded-3xl p-6">
                 <h3 className="font-oswald text-lg font-semibold text-white mb-4">Текущая палитра</h3>
@@ -436,7 +670,7 @@ export default function Index() {
                   ))}
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-white mb-3 block">Формат экспорта</label>
+                  <label className="text-sm font-medium text-white mb-3 block">Формат кода</label>
                   <div className="flex gap-3">
                     {(["css", "json", "hex"] as const).map((fmt) => (
                       <button key={fmt} onClick={() => setExportFormat(fmt)}
