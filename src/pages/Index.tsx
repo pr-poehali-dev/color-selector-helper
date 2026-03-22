@@ -756,7 +756,7 @@ export default function Index() {
                           style={{ backgroundColor: color, boxShadow: `0 4px 14px ${color}60` }} />
                         <div className="flex-1 min-w-0">
                           <div className="font-mono text-white font-semibold text-sm">{color.toUpperCase()}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">{["Основной", "Светлый", "Акцент", "Тёмный", "Дополнительный"][i]}</div>
+
                         </div>
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                           {copiedColor === color ? <Icon name="Check" size={15} className="text-green-400" /> : <Icon name="Copy" size={15} className="text-muted-foreground" />}
