@@ -1113,17 +1113,31 @@ export default function Index() {
                       ))}
                     </div>
                     {selectedGallery === globalIdx && (
-                      <div className="mt-3 space-y-1.5 animate-slide-up">
-                        {item.colors.map((c, j) => (
-                          <div key={j} className="flex items-center gap-2 cursor-pointer group/c hover:bg-white/5 rounded-lg px-1.5 py-1 transition-all"
-                            onClick={(e) => { e.stopPropagation(); copyColor(c); }}>
-                            <div className="w-4 h-4 rounded-md flex-shrink-0" style={{ backgroundColor: c }} />
-                            <span className="font-mono text-xs text-muted-foreground group-hover/c:text-white transition-colors">{c.toUpperCase()}</span>
-                            {copiedColor === c
-                              ? <Icon name="Check" size={11} className="text-green-400 ml-auto" />
-                              : <Icon name="Copy" size={11} className="text-muted-foreground ml-auto opacity-0 group-hover/c:opacity-100 transition-opacity" />}
-                          </div>
-                        ))}
+                      <div className="mt-3 animate-slide-up">
+                        <div className="space-y-1.5 mb-3">
+                          {item.colors.map((c, j) => (
+                            <div key={j} className="flex items-center gap-2 cursor-pointer group/c hover:bg-white/5 rounded-lg px-1.5 py-1 transition-all"
+                              onClick={(e) => { e.stopPropagation(); copyColor(c); }}>
+                              <div className="w-4 h-4 rounded-md flex-shrink-0" style={{ backgroundColor: c }} />
+                              <span className="font-mono text-xs text-muted-foreground group-hover/c:text-white transition-colors">{c.toUpperCase()}</span>
+                              {copiedColor === c
+                                ? <Icon name="Check" size={11} className="text-green-400 ml-auto" />
+                                : <Icon name="Copy" size={11} className="text-muted-foreground ml-auto opacity-0 group-hover/c:opacity-100 transition-opacity" />}
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const [h, s, l] = hexToHsl(item.colors[0]);
+                            setHue(h); setSaturation(s); setLightness(l);
+                            setActiveSection("generator");
+                          }}
+                          className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold text-white transition-all hover:scale-[1.02] active:scale-95"
+                          style={{ background: "linear-gradient(135deg, hsl(270,80%,45%), hsl(322,92%,55%))" }}>
+                          <Icon name="Sparkles" size={13} />
+                          Применить в генератор
+                        </button>
                       </div>
                     )}
                   </div>
