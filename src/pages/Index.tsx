@@ -149,14 +149,50 @@ function extractColorsFromImage(img: HTMLImageElement, count = 8): string[] {
 }
 
 const GALLERY_PALETTES = [
+  // Тёплый
   { name: "Закат над морем", mood: "Тёплый", colors: ["#FF6B6B", "#FF8E53", "#FF6B9D", "#C44569", "#F8A5C2"] },
+  { name: "Осенний лес", mood: "Тёплый", colors: ["#D62828", "#F77F00", "#FCBF49", "#EAE2B7", "#A44200"] },
+  { name: "Апельсиновый сок", mood: "Тёплый", colors: ["#FF4800", "#FF6D00", "#FF9100", "#FFAB40", "#FFD180"] },
+  { name: "Огонь", mood: "Тёплый", colors: ["#D00000", "#E85D04", "#F48C06", "#FAA307", "#FFBA08"] },
+  { name: "Тосканское лето", mood: "Тёплый", colors: ["#C1440E", "#E8835A", "#F0B27A", "#F7DC6F", "#FDEBD0"] },
+  // Холодный
   { name: "Северное сияние", mood: "Холодный", colors: ["#0F3460", "#16213E", "#0A7CFF", "#00D4AA", "#7B2FBE"] },
+  { name: "Зимний бриз", mood: "Холодный", colors: ["#CAF0F8", "#90E0EF", "#00B4D8", "#0077B6", "#03045E"] },
+  { name: "Арктика", mood: "Холодный", colors: ["#E8F4F8", "#A8DADC", "#457B9D", "#1D3557", "#0D1B2A"] },
+  { name: "Глубокий океан", mood: "Холодный", colors: ["#05668D", "#028090", "#00A896", "#02C39A", "#F0F3BD"] },
+  { name: "Полярная ночь", mood: "Холодный", colors: ["#001219", "#005F73", "#0A9396", "#94D2BD", "#E9D8A6"] },
+  // Природный
   { name: "Лесная прогулка", mood: "Природный", colors: ["#2D5016", "#57863A", "#8DB84A", "#C8E6C9", "#F1F8E9"] },
+  { name: "Джунгли", mood: "Природный", colors: ["#004B23", "#006400", "#007200", "#38B000", "#70E000"] },
+  { name: "Цветущий луг", mood: "Природный", colors: ["#606C38", "#283618", "#FEFAE0", "#DDA15E", "#BC6C25"] },
+  { name: "Морской берег", mood: "Природный", colors: ["#F4E1C1", "#A8C5B5", "#5E8B7E", "#2F6B5E", "#1A3C34"] },
+  { name: "Весенний сад", mood: "Природный", colors: ["#D8F3DC", "#B7E4C7", "#74C69D", "#40916C", "#1B4332"] },
+  // Тёмный
   { name: "Городская ночь", mood: "Тёмный", colors: ["#1A1A2E", "#16213E", "#0F3460", "#533483", "#E94560"] },
+  { name: "Готика", mood: "Тёмный", colors: ["#0D0208", "#003B00", "#008F11", "#00FF41", "#C8E6C9"] },
+  { name: "Угольный", mood: "Тёмный", colors: ["#212121", "#37474F", "#546E7A", "#78909C", "#B0BEC5"] },
+  { name: "Полночь", mood: "Тёмный", colors: ["#10002B", "#240046", "#3C096C", "#7B2FBE", "#E0AAFF"] },
+  // Нежный
   { name: "Сакура", mood: "Нежный", colors: ["#FFB7C5", "#FF69B4", "#FF1493", "#C71585", "#4A0020"] },
+  { name: "Лаванда", mood: "Нежный", colors: ["#E6DEFF", "#C4B5FD", "#A78BFA", "#7C3AED", "#4C1D95"] },
+  { name: "Макарун", mood: "Нежный", colors: ["#FFCAD4", "#F4ACB7", "#FFDFEB", "#CDB4DB", "#BDE0FE"] },
+  { name: "Рассвет", mood: "Нежный", colors: ["#FFF1E6", "#FFDDD2", "#FFBCAF", "#F4978E", "#F08080"] },
+  { name: "Ванильный крем", mood: "Нежный", colors: ["#FFF8E7", "#FCEBD3", "#F7D9A8", "#F0C27F", "#E8A857"] },
+  // Земляной
   { name: "Пустыня", mood: "Земляной", colors: ["#C4A882", "#A0845C", "#7B5E3D", "#DEB887", "#F5DEB3"] },
+  { name: "Терракота", mood: "Земляной", colors: ["#9B2335", "#B5451B", "#C4622D", "#D4845A", "#E8C49A"] },
+  { name: "Шоколад", mood: "Земляной", colors: ["#3E1F00", "#6F3200", "#9C4A1A", "#C47C3A", "#E8B882"] },
+  { name: "Пшеничное поле", mood: "Земляной", colors: ["#F5E6C8", "#E8CC88", "#C8A84B", "#A07830", "#704820"] },
+  // Цифровой
   { name: "Техно", mood: "Цифровой", colors: ["#00FFFF", "#00FF41", "#FF00FF", "#0D0D0D", "#1A1A1A"] },
-  { name: "Лаванда", mood: "Мягкий", colors: ["#E6DEFF", "#C4B5FD", "#A78BFA", "#7C3AED", "#4C1D95"] },
+  { name: "Киберпанк", mood: "Цифровой", colors: ["#FF006E", "#FB5607", "#FFBE0B", "#3A86FF", "#8338EC"] },
+  { name: "Неон", mood: "Цифровой", colors: ["#FF00FF", "#00FFFF", "#FF3366", "#33FF00", "#0033FF"] },
+  { name: "Vaporwave", mood: "Цифровой", colors: ["#FF6EC7", "#A855F7", "#6366F1", "#22D3EE", "#F0ABFC"] },
+  // Бренд / UI
+  { name: "Корпоративный", mood: "Бренд", colors: ["#003087", "#0057B7", "#0078D4", "#50ABF1", "#C7E0F4"] },
+  { name: "Стартап", mood: "Бренд", colors: ["#6366F1", "#8B5CF6", "#EC4899", "#F43F5E", "#FB923C"] },
+  { name: "Минимализм", mood: "Бренд", colors: ["#FFFFFF", "#F5F5F5", "#E0E0E0", "#9E9E9E", "#212121"] },
+  { name: "Монохром", mood: "Бренд", colors: ["#F8F9FA", "#DEE2E6", "#868E96", "#343A40", "#212529"] },
 ];
 
 const THEORY_TOPICS = [
@@ -509,6 +545,7 @@ export default function Index() {
   const [analyzerLit1, setAnalyzerLit1] = useState(52);
 
   const [selectedGallery, setSelectedGallery] = useState<number | null>(null);
+  const [galleryFilter, setGalleryFilter] = useState<string>("Все");
   const [exportFormat, setExportFormat] = useState<"css" | "json" | "hex">("css");
   const [exportCopied, setExportCopied] = useState(false);
 
@@ -1015,7 +1052,7 @@ export default function Index() {
         {/* ── GALLERY ── */}
         {activeSection === "gallery" && (
           <div className="animate-slide-up">
-            <div className="mb-8 pt-4">
+            <div className="mb-6 pt-4">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
                   style={{ background: "linear-gradient(135deg, hsl(322,92%,66%), hsl(28,100%,62%))" }}>
@@ -1026,42 +1063,72 @@ export default function Index() {
               <p className="text-muted-foreground pl-[52px]">Готовые цветовые схемы для разных стилей — нажмите, чтобы скопировать цвета</p>
               <div className="gradient-divider mt-5" />
             </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {["Все", "Тёплый", "Холодный", "Природный", "Тёмный", "Нежный", "Земляной", "Цифровой", "Бренд"].map(f => (
+                <button key={f} onClick={() => { setGalleryFilter(f); setSelectedGallery(null); }}
+                  className="px-3.5 py-1.5 rounded-full text-xs font-medium transition-all"
+                  style={galleryFilter === f
+                    ? { background: "linear-gradient(135deg,hsl(270,80%,50%),hsl(322,92%,60%))", color: "white" }
+                    : { background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  {f}
+                  {f !== "Все" && (
+                    <span className="ml-1.5 opacity-60">{GALLERY_PALETTES.filter(p => p.mood === f).length}</span>
+                  )}
+                </button>
+              ))}
+              <span className="ml-auto text-xs text-muted-foreground self-center">
+                {(galleryFilter === "Все" ? GALLERY_PALETTES : GALLERY_PALETTES.filter(p => p.mood === galleryFilter)).length} палитр
+              </span>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {GALLERY_PALETTES.map((item, i) => (
-                <div key={i}
-                  className={`glass-card rounded-3xl p-4 cursor-pointer card-hover transition-all ${selectedGallery === i ? "ring-1 ring-white/20 glow-purple" : ""}`}
-                  onClick={() => setSelectedGallery(selectedGallery === i ? null : i)}>
-                  <div className="relative flex rounded-2xl overflow-hidden h-20 mb-3">
-                    {item.colors.map((c, j) => <div key={j} className="flex-1 transition-all duration-300 hover:flex-[2]" style={{ backgroundColor: c }} />)}
-                    {selectedGallery === i && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-2xl">
-                        <Icon name="Check" size={20} className="text-white drop-shadow" />
+              {(galleryFilter === "Все" ? GALLERY_PALETTES : GALLERY_PALETTES.filter(p => p.mood === galleryFilter)).map((item, i) => {
+                const globalIdx = GALLERY_PALETTES.indexOf(item);
+                return (
+                  <div key={globalIdx}
+                    className={`glass-card rounded-3xl p-4 cursor-pointer card-hover transition-all ${selectedGallery === globalIdx ? "ring-1 ring-white/20 glow-purple" : ""}`}
+                    onClick={() => setSelectedGallery(selectedGallery === globalIdx ? null : globalIdx)}>
+                    <div className="relative flex rounded-2xl overflow-hidden h-20 mb-3">
+                      {item.colors.map((c, j) => <div key={j} className="flex-1 transition-all duration-300 hover:flex-[2]" style={{ backgroundColor: c }} />)}
+                      {selectedGallery === globalIdx && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-2xl">
+                          <Icon name="Check" size={20} className="text-white drop-shadow" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-start justify-between gap-1 mb-0.5">
+                      <div className="font-oswald font-bold text-white text-base tracking-wide leading-tight">{item.name}</div>
+                    </div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                        style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}>
+                        {item.mood}
+                      </span>
+                    </div>
+                    <div className="flex gap-1">
+                      {item.colors.map((c, j) => (
+                        <div key={j} className="flex-1 h-1.5 rounded-full" style={{ backgroundColor: c }} />
+                      ))}
+                    </div>
+                    {selectedGallery === globalIdx && (
+                      <div className="mt-3 space-y-1.5 animate-slide-up">
+                        {item.colors.map((c, j) => (
+                          <div key={j} className="flex items-center gap-2 cursor-pointer group/c hover:bg-white/5 rounded-lg px-1.5 py-1 transition-all"
+                            onClick={(e) => { e.stopPropagation(); copyColor(c); }}>
+                            <div className="w-4 h-4 rounded-md flex-shrink-0" style={{ backgroundColor: c }} />
+                            <span className="font-mono text-xs text-muted-foreground group-hover/c:text-white transition-colors">{c.toUpperCase()}</span>
+                            {copiedColor === c
+                              ? <Icon name="Check" size={11} className="text-green-400 ml-auto" />
+                              : <Icon name="Copy" size={11} className="text-muted-foreground ml-auto opacity-0 group-hover/c:opacity-100 transition-opacity" />}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
-                  <div className="font-oswald font-bold text-white text-base mb-0.5 tracking-wide">{item.name}</div>
-                  <div className="text-xs text-muted-foreground mb-2">{item.mood}</div>
-                  <div className="flex gap-1">
-                    {item.colors.map((c, j) => (
-                      <div key={j} className="flex-1 h-1.5 rounded-full" style={{ backgroundColor: c }} />
-                    ))}
-                  </div>
-                  {selectedGallery === i && (
-                    <div className="mt-3 space-y-1.5 animate-slide-up">
-                      {item.colors.map((c, j) => (
-                        <div key={j} className="flex items-center gap-2 cursor-pointer group/c hover:bg-white/5 rounded-lg px-1.5 py-1 transition-all"
-                          onClick={(e) => { e.stopPropagation(); copyColor(c); }}>
-                          <div className="w-4 h-4 rounded-md flex-shrink-0" style={{ backgroundColor: c }} />
-                          <span className="font-mono text-xs text-muted-foreground group-hover/c:text-white transition-colors">{c.toUpperCase()}</span>
-                          {copiedColor === c
-                            ? <Icon name="Check" size={11} className="text-green-400 ml-auto" />
-                            : <Icon name="Copy" size={11} className="text-muted-foreground ml-auto opacity-0 group-hover/c:opacity-100 transition-opacity" />}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
