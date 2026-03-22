@@ -517,7 +517,8 @@ export default function Index() {
   const [mixColor2, setMixColor2] = useState("#00D4AA");
   const [mixRatio, setMixRatio] = useState(50);
   const [mixCopied, setMixCopied] = useState<string | null>(null);
-  const MIX_STEPS = 7;
+  const [mixStepsCount, setMixStepsCount] = useState(7);
+  const MIX_STEPS = mixStepsCount;
 
   const palette = generatePalette(hue, saturation, lightness, paletteMode);
   const baseColor = hslToHex(hue, saturation, lightness);
@@ -740,93 +741,173 @@ export default function Index() {
             <PhotoExtractor onApply={(colors, action) => handlePhotoColors(colors, action)} />
 
             {/* Color Mixer */}
-            <div className="mt-6 glass rounded-3xl p-6">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                  style={{ background: `linear-gradient(135deg, ${mixColor1}, ${mixColor2})` }}>
-                  <Icon name="Blend" size={18} className="text-white drop-shadow" />
+            <div className="mt-6 glass-card rounded-3xl p-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg"
+                    style={{ background: `linear-gradient(135deg, ${mixColor1}, ${mixColor2})` }}>
+                    <Icon name="Blend" size={20} className="text-white drop-shadow" />
+                  </div>
+                  <div>
+                    <h3 className="font-oswald text-2xl font-bold text-white leading-none">Смешивание цветов</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Интерактивный RGB-смешиватель</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-oswald text-xl font-bold text-white">Смешивание цветов</h3>
-                  <p className="text-xs text-muted-foreground">Перетащите слайдер чтобы смешать два цвета</p>
-                </div>
+                <button onClick={() => { setMixColor1("#9B59B6"); setMixColor2("#00D4AA"); setMixRatio(50); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs text-muted-foreground hover:text-white glass-bright border border-white/10 hover:border-white/20 transition-all">
+                  <Icon name="RotateCcw" size={12} />
+                  Сбросить
+                </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center mb-6">
-                {/* Color A */}
-                <div className="space-y-3">
-                  <div className="text-sm font-medium text-white">Цвет A</div>
-                  <div className="h-20 rounded-2xl flex items-center justify-center" style={{ backgroundColor: mixColor1 }}>
-                    <span className="font-mono text-xs font-bold drop-shadow" style={{ color: getLuminance(mixColor1) > 0.4 ? "#000" : "#fff" }}>{mixColor1.toUpperCase()}</span>
+              {/* Main mixing area */}
+              <div className="glass-bright rounded-2xl p-5 mb-4">
+                {/* Color previews + result */}
+                <div className="flex items-stretch gap-3 mb-5">
+                  {/* Color A preview */}
+                  <div className="flex-1 rounded-xl overflow-hidden relative min-h-[80px] cursor-pointer group"
+                    style={{ backgroundColor: mixColor1 }}>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+                      <span className="font-oswald text-base font-bold drop-shadow-md"
+                        style={{ color: getLuminance(mixColor1) > 0.4 ? "#000" : "#fff" }}>A</span>
+                      <span className="font-mono text-[10px] font-bold drop-shadow-sm"
+                        style={{ color: getLuminance(mixColor1) > 0.4 ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.8)" }}>
+                        {mixColor1.toUpperCase()}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <input type="color" value={mixColor1} onChange={(e) => setMixColor1(e.target.value)}
-                      className="w-10 h-9 rounded-lg border border-white/10 cursor-pointer bg-transparent flex-shrink-0" />
-                    <input type="text" value={mixColor1} onChange={(e) => setMixColor1(e.target.value)}
-                      className="flex-1 glass rounded-xl px-3 text-xs font-mono text-white border border-white/10 bg-transparent outline-none focus:border-white/30 min-w-0" />
+
+                  {/* Gradient bar */}
+                  <div className="flex-[2] rounded-xl overflow-hidden relative min-h-[80px]"
+                    style={{ background: `linear-gradient(to right, ${mixColor1}, ${mixColor2})` }}>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
+                      <div className="w-14 h-14 rounded-full border-[3px] border-white shadow-2xl transition-all"
+                        style={{ backgroundColor: mixedResult, boxShadow: `0 0 24px ${mixedResult}99, 0 4px 20px rgba(0,0,0,0.4)` }} />
+                    </div>
+                  </div>
+
+                  {/* Color B preview */}
+                  <div className="flex-1 rounded-xl overflow-hidden relative min-h-[80px] cursor-pointer group"
+                    style={{ backgroundColor: mixColor2 }}>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+                      <span className="font-oswald text-base font-bold drop-shadow-md"
+                        style={{ color: getLuminance(mixColor2) > 0.4 ? "#000" : "#fff" }}>B</span>
+                      <span className="font-mono text-[10px] font-bold drop-shadow-sm"
+                        style={{ color: getLuminance(mixColor2) > 0.4 ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.8)" }}>
+                        {mixColor2.toUpperCase()}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Result */}
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-24 h-24 rounded-full shadow-2xl color-swatch"
-                    style={{ backgroundColor: mixedResult, boxShadow: `0 0 30px ${mixedResult}80` }} />
-                  <div className="text-center">
+                {/* Slider */}
+                <div className="mb-4">
+                  <div className="relative h-6">
+                    <div className="h-6 rounded-full absolute inset-0 shadow-inner"
+                      style={{ background: `linear-gradient(to right, ${mixColor1}, ${mixColor2})` }} />
+                    <input type="range" min={0} max={100} value={mixRatio}
+                      onChange={(e) => setMixRatio(Number(e.target.value))}
+                      className="w-full absolute inset-0 opacity-0 h-6 cursor-pointer" />
+                    <div className="w-7 h-7 rounded-full shadow-xl absolute top-[-2px] pointer-events-none transition-all duration-75"
+                      style={{
+                        left: `calc(${mixRatio}% - 14px)`,
+                        backgroundColor: mixedResult,
+                        border: "3px solid white",
+                        boxShadow: `0 0 10px ${mixedResult}80, 0 2px 8px rgba(0,0,0,0.4)`
+                      }} />
+                  </div>
+                  <div className="flex justify-between mt-2">
+                    <span className="text-xs text-muted-foreground font-mono">A {100 - mixRatio}%</span>
+                    <span className="text-xs text-white font-mono font-semibold">{mixedResult.toUpperCase()}</span>
+                    <span className="text-xs text-muted-foreground font-mono">B {mixRatio}%</span>
+                  </div>
+                </div>
+
+                {/* Result info + copy */}
+                <div className="flex items-center gap-3 p-3 rounded-xl"
+                  style={{ backgroundColor: `${mixedResult}18`, border: `1px solid ${mixedResult}40` }}>
+                  <div className="w-10 h-10 rounded-lg flex-shrink-0 shadow-lg"
+                    style={{ backgroundColor: mixedResult, boxShadow: `0 0 12px ${mixedResult}60` }} />
+                  <div className="flex-1">
                     <div className="font-mono text-white font-bold text-sm">{mixedResult.toUpperCase()}</div>
-                    <div className="text-xs text-muted-foreground">{mixRatio}% / {100 - mixRatio}%</div>
+                    <div className="text-xs text-muted-foreground">
+                      {(() => { const r = hexToRgb(mixedResult); return `rgb(${r.r}, ${r.g}, ${r.b})`; })()}
+                    </div>
                   </div>
                   <button onClick={() => copyMix(mixedResult)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white transition-all"
-                    style={{ background: "linear-gradient(135deg, hsl(270,80%,45%), hsl(195,100%,40%))" }}>
-                    <Icon name={mixCopied === mixedResult ? "Check" : "Copy"} size={12} />
-                    {mixCopied === mixedResult ? "Скопировано" : "Копировать"}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all active:scale-95"
+                    style={{ background: mixCopied === mixedResult ? "linear-gradient(135deg,#10b981,#059669)" : "linear-gradient(135deg, hsl(270,80%,45%), hsl(195,100%,40%))" }}>
+                    <Icon name={mixCopied === mixedResult ? "Check" : "Copy"} size={13} />
+                    {mixCopied === mixedResult ? "Скопировано!" : "Копировать"}
                   </button>
                 </div>
-
-                {/* Color B */}
-                <div className="space-y-3">
-                  <div className="text-sm font-medium text-white">Цвет B</div>
-                  <div className="h-20 rounded-2xl flex items-center justify-center" style={{ backgroundColor: mixColor2 }}>
-                    <span className="font-mono text-xs font-bold drop-shadow" style={{ color: getLuminance(mixColor2) > 0.4 ? "#000" : "#fff" }}>{mixColor2.toUpperCase()}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <input type="color" value={mixColor2} onChange={(e) => setMixColor2(e.target.value)}
-                      className="w-10 h-9 rounded-lg border border-white/10 cursor-pointer bg-transparent flex-shrink-0" />
-                    <input type="text" value={mixColor2} onChange={(e) => setMixColor2(e.target.value)}
-                      className="flex-1 glass rounded-xl px-3 text-xs font-mono text-white border border-white/10 bg-transparent outline-none focus:border-white/30 min-w-0" />
-                  </div>
-                </div>
               </div>
 
-              {/* Ratio slider */}
-              <div className="mb-5">
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm text-white">Соотношение смешивания</span>
-                  <span className="text-sm font-mono text-muted-foreground">A {mixRatio}% — B {100 - mixRatio}%</span>
-                </div>
-                <div className="relative h-5">
-                  <div className="h-5 rounded-full absolute inset-0" style={{ background: `linear-gradient(to right, ${mixColor1}, ${mixColor2})` }} />
-                  <input type="range" min={0} max={100} value={mixRatio}
-                    onChange={(e) => setMixRatio(Number(e.target.value))}
-                    className="w-full absolute inset-0 opacity-0 h-5 cursor-pointer" />
-                  <div className="w-6 h-6 rounded-full border-white shadow-xl absolute top-[-2px] pointer-events-none transition-all"
-                    style={{ left: `calc(${mixRatio}% - 12px)`, backgroundColor: mixedResult, borderWidth: 3, borderStyle: "solid", borderColor: "white" }} />
-                </div>
+              {/* Color inputs */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {[
+                  { label: "Цвет A", color: mixColor1, setColor: setMixColor1 },
+                  { label: "Цвет B", color: mixColor2, setColor: setMixColor2 },
+                ].map(({ label, color, setColor }) => (
+                  <div key={label} className="glass-bright rounded-2xl p-3">
+                    <div className="text-xs text-muted-foreground mb-2">{label}</div>
+                    <div className="flex gap-2 items-center">
+                      <div className="relative flex-shrink-0">
+                        <div className="w-9 h-9 rounded-lg shadow-md" style={{ backgroundColor: color }} />
+                        <input type="color" value={color} onChange={(e) => setColor(e.target.value)}
+                          className="absolute inset-0 opacity-0 w-9 h-9 cursor-pointer rounded-lg" />
+                      </div>
+                      <input type="text" value={color} onChange={(e) => setColor(e.target.value)}
+                        className="flex-1 glass rounded-xl px-3 py-2 text-xs font-mono text-white border border-white/10 bg-transparent outline-none focus:border-white/30 min-w-0 h-9" />
+                      <button onClick={() => { const t = mixColor1; setMixColor1(mixColor2); setMixColor2(t); }}
+                        className="w-9 h-9 flex items-center justify-center glass-bright rounded-xl border border-white/10 hover:border-white/20 text-muted-foreground hover:text-white transition-all flex-shrink-0"
+                        title="Поменять местами">
+                        <Icon name="ArrowLeftRight" size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              {/* Steps */}
-              <div>
-                <div className="text-sm font-medium text-white mb-3">Градиент из {MIX_STEPS} шагов</div>
-                <div className="flex gap-2">
+              {/* Steps gradient */}
+              <div className="glass-bright rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold text-white">Градиентная шкала</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Шагов:</span>
+                    {[5, 7, 9, 11].map(n => (
+                      <button key={n} onClick={() => setMixStepsCount(n)}
+                        className="w-7 h-7 rounded-lg text-xs font-mono font-semibold transition-all"
+                        style={mixStepsCount === n
+                          ? { background: "linear-gradient(135deg,hsl(270,80%,45%),hsl(195,100%,40%))", color: "white" }
+                          : { background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.5)" }}>
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-1.5 mb-2">
                   {mixStepsColors.map((c, i) => (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5 cursor-pointer group" onClick={() => copyMix(c)}>
-                      <div className="w-full rounded-xl transition-all group-hover:scale-105"
-                        style={{ height: 48, backgroundColor: c, boxShadow: mixCopied === c ? `0 0 12px ${c}` : undefined }} />
-                      <span className="font-mono text-[9px] text-muted-foreground hidden md:block">{c.toUpperCase()}</span>
-                      {mixCopied === c && <Icon name="Check" size={10} className="text-green-400" />}
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1 cursor-pointer group" onClick={() => copyMix(c)}>
+                      <div className="w-full rounded-lg transition-all group-hover:scale-y-110 origin-bottom relative"
+                        style={{
+                          height: 52,
+                          backgroundColor: c,
+                          boxShadow: mixCopied === c ? `0 0 14px ${c}` : "none",
+                          outline: mixCopied === c ? `2px solid white` : "none",
+                        }}>
+                        {mixCopied === c && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Icon name="Check" size={14} className="text-white drop-shadow-md" />
+                          </div>
+                        )}
+                      </div>
+                      <span className="font-mono text-[8px] text-muted-foreground hidden lg:block group-hover:text-white transition-colors">{c.toUpperCase()}</span>
                     </div>
                   ))}
                 </div>
+                <p className="text-xs text-muted-foreground text-center">Нажмите на любой цвет, чтобы скопировать</p>
               </div>
             </div>
           </div>
