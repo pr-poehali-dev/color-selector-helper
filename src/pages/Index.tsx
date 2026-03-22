@@ -213,16 +213,19 @@ function ColorWheel({ hue, onSelect }: {
   const isDragging = useRef(false);
   const SIZE = 240, CX = 120, CY = 120, R = 112;
 
-  const getAngleFromEvent = (e: React.MouseEvent | MouseEvent) => {
+  const getAngleFromCoords = (clientX: number, clientY: number) => {
     const rect = canvasRef.current!.getBoundingClientRect();
     const scaleX = SIZE / rect.width;
     const scaleY = SIZE / rect.height;
-    const x = (e.clientX - rect.left) * scaleX - CX;
-    const y = (e.clientY - rect.top) * scaleY - CY;
+    const x = (clientX - rect.left) * scaleX - CX;
+    const y = (clientY - rect.top) * scaleY - CY;
     let angle = Math.atan2(y, x) * 180 / Math.PI;
     if (angle < 0) angle += 360;
     return Math.round(angle) % 360;
   };
+
+  const getAngleFromEvent = (e: React.MouseEvent | MouseEvent) =>
+    getAngleFromCoords(e.clientX, e.clientY);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -281,9 +284,23 @@ function ColorWheel({ hue, onSelect }: {
   useEffect(() => {
     const onMove = (e: MouseEvent) => { if (isDragging.current) onSelect(getAngleFromEvent(e)); };
     const onUp = () => { isDragging.current = false; };
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isDragging.current) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      onSelect(getAngleFromCoords(t.clientX, t.clientY));
+    };
+    const onTouchEnd = () => { isDragging.current = false; };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
-    return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", onTouchEnd);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+    };
   }, [onSelect]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -291,13 +308,20 @@ function ColorWheel({ hue, onSelect }: {
     onSelect(getAngleFromEvent(e));
   };
 
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    isDragging.current = true;
+    const t = e.touches[0];
+    onSelect(getAngleFromCoords(t.clientX, t.clientY));
+  };
+
   return (
     <div className="flex flex-col items-center gap-2">
       <canvas ref={canvasRef} width={SIZE} height={SIZE}
         onMouseDown={handleMouseDown}
-        className="cursor-crosshair rounded-full select-none"
+        onTouchStart={handleTouchStart}
+        className="cursor-crosshair rounded-full select-none w-full max-w-[240px]"
         style={{ filter: "drop-shadow(0 0 20px rgba(150,80,230,0.4))", touchAction: "none" }} />
-      <p className="text-xs text-muted-foreground">Кликните или тяните по RGB-кругу чтобы выбрать цвет</p>
+      <p className="text-xs text-muted-foreground">Тяните по кругу чтобы выбрать цвет</p>
     </div>
   );
 }
@@ -639,24 +663,24 @@ export default function Index() {
           style={{ background: "radial-gradient(circle, hsl(148,72%,52%), transparent 65%)", animationDelay: "3s" }} />
       </div>
 
-      <header className="relative z-20 py-4 px-6">
+      <header className="relative z-20 py-3 px-4 md:py-4 md:px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="glass-card rounded-2xl px-4 py-3 flex items-center justify-between gap-4">
+          <div className="glass-card rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
             {/* Logo */}
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center relative"
+            <div className="flex items-center gap-2.5 flex-shrink-0 min-w-0">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center relative flex-shrink-0"
                 style={{ background: "linear-gradient(135deg, hsl(268,85%,68%), hsl(192,100%,58%))" }}>
                 <Icon name="Palette" size={18} className="text-white" />
                 <div className="absolute inset-0 rounded-xl animate-pulse-glow"
                   style={{ background: "linear-gradient(135deg, hsl(268,85%,68%), hsl(192,100%,58%))", opacity: 0.4 }} />
               </div>
-              <div>
-                <h1 className="font-oswald text-lg font-bold text-white tracking-widest leading-none">ЦВЕТОВОЙ ПОМОЩНИК</h1>
-                <p className="text-[10px] text-muted-foreground tracking-wider uppercase mt-0.5">подбор палитр для продукта</p>
+              <div className="min-w-0">
+                <h1 className="font-oswald text-base md:text-lg font-bold text-white tracking-widest leading-none truncate">ЦВЕТОВОЙ ПОМОЩНИК</h1>
+                <p className="text-[10px] text-muted-foreground tracking-wider uppercase mt-0.5 hidden sm:block">подбор палитр для продукта</p>
               </div>
             </div>
-            {/* Nav */}
-            <nav className="flex items-center gap-0.5 overflow-x-auto">
+            {/* Nav — desktop only */}
+            <nav className="hidden md:flex items-center gap-0.5">
               {navItems.map((item) => (
                 <button key={item.id} onClick={() => setActiveSection(item.id)}
                   className={`nav-pill relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium whitespace-nowrap
@@ -665,7 +689,7 @@ export default function Index() {
                       : "text-muted-foreground hover:text-white hover:bg-white/5"
                     }`}>
                   <Icon name={item.icon} size={14} />
-                  <span className="hidden sm:inline">{item.label}</span>
+                  <span>{item.label}</span>
                 </button>
               ))}
             </nav>
@@ -673,7 +697,23 @@ export default function Index() {
         </div>
       </header>
 
-      <main className="relative z-10 max-w-6xl mx-auto px-6 pb-16 pt-2">
+      {/* Mobile bottom navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass-card border-t border-white/10">
+        <div className="flex items-stretch">
+          {navItems.map((item) => (
+            <button key={item.id} onClick={() => setActiveSection(item.id)}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-all
+                ${activeSection === item.id ? "text-white" : "text-muted-foreground"}`}>
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${activeSection === item.id ? "bg-white/15" : ""}`}>
+                <Icon name={item.icon} size={18} />
+              </div>
+              <span className="text-[9px] font-medium leading-none">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      <main className="relative z-10 max-w-6xl mx-auto px-4 md:px-6 pb-28 md:pb-16 pt-2">
 
         {/* ── GENERATOR ── */}
         {activeSection === "generator" && (
@@ -684,9 +724,9 @@ export default function Index() {
                   style={{ background: "linear-gradient(135deg, hsl(268,85%,68%), hsl(192,100%,58%))" }}>
                   <Icon name="Sparkles" size={18} className="text-white" />
                 </div>
-                <h2 className="font-oswald text-4xl font-bold gradient-text">Генератор палитр</h2>
+                <h2 className="font-oswald text-2xl md:text-4xl font-bold gradient-text">Генератор палитр</h2>
               </div>
-              <p className="text-muted-foreground pl-[52px]">Настройте базовый цвет и выберите схему — палитра создастся автоматически</p>
+              <p className="text-muted-foreground pl-0 md:pl-[52px] text-sm md:text-base">Настройте базовый цвет и выберите схему — палитра создастся автоматически</p>
               <div className="gradient-divider mt-5" />
             </div>
 
@@ -710,13 +750,13 @@ export default function Index() {
                       <label className="text-sm font-medium text-white">{s.label}</label>
                       <span className="text-sm font-mono text-muted-foreground">{s.value}{s.unit}</span>
                     </div>
-                    <div className="relative h-4">
-                      <div className="h-4 rounded-full absolute inset-0" style={{ background: s.track }} />
+                    <div className="relative h-6">
+                      <div className="h-6 rounded-full absolute inset-0" style={{ background: s.track }} />
                       <input type="range" min={s.min} max={s.max} value={s.value}
                         onChange={(e) => s.onChange(Number(e.target.value))}
-                        className="w-full absolute inset-0 opacity-0 h-4 cursor-pointer" />
-                      <div className="w-5 h-5 rounded-full border-2 border-white shadow-lg absolute top-[-2px] pointer-events-none transition-all"
-                        style={{ left: `calc(${s.thumbPos}% - 10px)`, backgroundColor: s.thumbColor }} />
+                        className="w-full absolute inset-0 opacity-0 h-6 cursor-pointer" style={{ touchAction: "none" }} />
+                      <div className="w-7 h-7 rounded-full border-2 border-white shadow-lg absolute top-[-2px] pointer-events-none transition-all"
+                        style={{ left: `calc(${s.thumbPos}% - 14px)`, backgroundColor: s.thumbColor }} />
                     </div>
                   </div>
                 ))}
@@ -959,9 +999,9 @@ export default function Index() {
                   style={{ background: "linear-gradient(135deg, hsl(192,100%,58%), hsl(148,72%,52%))" }}>
                   <Icon name="ScanEye" size={18} className="text-white" />
                 </div>
-                <h2 className="font-oswald text-4xl font-bold gradient-text">Анализатор контраста</h2>
+                <h2 className="font-oswald text-2xl md:text-4xl font-bold gradient-text">Анализатор контраста</h2>
               </div>
-              <p className="text-muted-foreground pl-[52px]">Проверьте совместимость двух цветов и их читаемость по стандарту WCAG</p>
+              <p className="text-muted-foreground pl-0 md:pl-[52px] text-sm md:text-base">Проверьте совместимость двух цветов и их читаемость по стандарту WCAG</p>
               <div className="gradient-divider mt-5" />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -1058,9 +1098,9 @@ export default function Index() {
                   style={{ background: "linear-gradient(135deg, hsl(322,92%,66%), hsl(28,100%,62%))" }}>
                   <Icon name="LayoutGrid" size={18} className="text-white" />
                 </div>
-                <h2 className="font-oswald text-4xl font-bold gradient-text-warm">Галерея палитр</h2>
+                <h2 className="font-oswald text-2xl md:text-4xl font-bold gradient-text-warm">Галерея палитр</h2>
               </div>
-              <p className="text-muted-foreground pl-[52px]">Готовые цветовые схемы для разных стилей — нажмите, чтобы скопировать цвета</p>
+              <p className="text-muted-foreground pl-0 md:pl-[52px] text-sm md:text-base">Готовые цветовые схемы для разных стилей — нажмите, чтобы скопировать цвета</p>
               <div className="gradient-divider mt-5" />
             </div>
 
@@ -1156,9 +1196,9 @@ export default function Index() {
                   style={{ background: "linear-gradient(135deg, hsl(28,100%,62%), hsl(48,100%,60%))" }}>
                   <Icon name="Download" size={18} className="text-white" />
                 </div>
-                <h2 className="font-oswald text-4xl font-bold gradient-text-warm">Экспорт палитры</h2>
+                <h2 className="font-oswald text-2xl md:text-4xl font-bold gradient-text-warm">Экспорт палитры</h2>
               </div>
-              <p className="text-muted-foreground pl-[52px]">Сохраните текущую палитру в нужном формате — код или красивое PNG-изображение</p>
+              <p className="text-muted-foreground pl-0 md:pl-[52px] text-sm md:text-base">Сохраните текущую палитру в нужном формате — код или красивое PNG-изображение</p>
               <div className="gradient-divider mt-5" />
             </div>
 
@@ -1249,9 +1289,9 @@ export default function Index() {
                   style={{ background: "linear-gradient(135deg, hsl(148,72%,52%), hsl(192,100%,58%))" }}>
                   <Icon name="ShieldCheck" size={18} className="text-white" />
                 </div>
-                <h2 className="font-oswald text-4xl font-bold gradient-text">Тесты доступности</h2>
+                <h2 className="font-oswald text-2xl md:text-4xl font-bold gradient-text">Тесты доступности</h2>
               </div>
-              <p className="text-muted-foreground pl-[52px]">Проверьте вашу палитру по критериям WCAG 2.1 для инклюзивного дизайна</p>
+              <p className="text-muted-foreground pl-0 md:pl-[52px] text-sm md:text-base">Проверьте вашу палитру по критериям WCAG 2.1 для инклюзивного дизайна</p>
               <div className="gradient-divider mt-5" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -1295,9 +1335,9 @@ export default function Index() {
                   style={{ background: "linear-gradient(135deg, hsl(268,85%,68%), hsl(322,92%,66%))" }}>
                   <Icon name="BookOpen" size={18} className="text-white" />
                 </div>
-                <h2 className="font-oswald text-4xl font-bold gradient-text">Теория цвета</h2>
+                <h2 className="font-oswald text-2xl md:text-4xl font-bold gradient-text">Теория цвета</h2>
               </div>
-              <p className="text-muted-foreground pl-[52px]">Основы цветоведения для создания гармоничных дизайнов</p>
+              <p className="text-muted-foreground pl-0 md:pl-[52px] text-sm md:text-base">Основы цветоведения для создания гармоничных дизайнов</p>
               <div className="gradient-divider mt-5" />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
